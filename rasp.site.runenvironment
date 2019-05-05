@@ -1,0 +1,17 @@
+# /bin/sh format
+# Read by $BASEDIR/bin/DoPlot.pm
+
+ulimit -s unlimited
+export KMP_STACKSIZE=1000000000
+
+export LD_LIBRARY_PATH+=:$BASEDIR/lib
+
+# Set ENV variables for NCL
+# Needed if running from crontab
+if [ -f /etc/profile.d/ncarg.sh ]
+then
+      .	/etc/profile.d/ncarg.sh 
+fi
+
+export NCARG_RANGS=$BASEDIR/lib/rangs
+export NCL_DEF_LIB_DIR=$BASEDIR/GM/LIB

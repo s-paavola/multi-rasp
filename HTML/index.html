@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>localhost RASP</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="w3.css">
+        <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry&key="></script>
+        <script src="newParamList.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+        <script src="rasp.js"></script>
+        <script type="text/javascript" src="ExtDraggableObject.js"></script>
+        
+        <style>
+            .list:hover {
+                background-color: #e7e7e7;
+            }
+        
+            li.active {
+                background-color: #e7e7e7;
+            }
+        
+            button.active {
+                color:#fff!important;background-color:#f44336!important
+            }
+        
+            .plot, .sounding {
+                color:#2196F3
+            }
+        
+            .plot.full {
+                color:#000
+            }
+        
+            .w3-btn,.w3-btn-block {
+                padding:3px 8px
+            }
+        
+            ul.w3-ul li {
+                padding:0px 2px 0px 16px;
+                border-bottom:none;
+                cursor:default
+            }
+        
+            .old {
+                color:#757575
+            }
+        
+        </style>
+        
+    </head>
+    <body>
+        <div class="w3-sidebar w3-bar-block w3-collapse w3-white w3-card w3-animate-left w3-small" style="width:300px" id="nav">
+	    <button class="w3-bar-item w3-button w3-large w3-hide-large" onclick="menu_close()">Close &times;</button>
+            <div class="w3-dropdown-click w3-center">
+                <button onclick="regionDropdown()" class="w3-bar-item w3-btn-block w3-blue w3-center" id="Region">Dropdown</button>
+                <ul class="w3-dropdown-content w3-border w3-ul" id="regions"></ul>
+            </div>
+            <div id="models" class="w3-center">
+            </div>
+            <div class="w3-row">
+                <div id="days" class="w3-col s8"></div>
+                <div class="w3-col s1"><p> </p></div>
+                <div id="times" class="w3-col s3"></div>
+            </div>
+            <div class="w3-card">
+                <button onclick="togglePlots()" class="w3-btn-block w3-small w3-pale-red w3-center" id="plotDetail">Short List</button>
+                <ul id="plotId" class="w3-ul w3-small w3-hoverable" style="height:216px;overflow:auto"></ul>
+                <ul id="plotInfo" class="w3-small w3-pale-red"></ul>
+            </div>
+	    <button onclick="about()" class="W3-btn-block w3-small w3-pale-red">About</button>
+	    <button onclick="getUrl()" class="W3-btn-block w3-small w3-pale-red">Get URL</button>
+        </div>
+        
+        <div class="w3-main" style="margin-left:300px" id="imgdata">
+            <div id="imgDiv" class="w3-show">
+                <div id="topTitle" class="w3-col s11 w3-display-container">
+                    <img id="theTitle" src="" alt="The Title" style="max-height:100%; width:auto;display:block;margin:0 auto">
+                    <div class="w3-opennav w3-xlarge w3-hide-large w3-display-topleft w3-container" onclick="menu_open()">&#9776;</div>
+                </div>
+                <div id="plotImg" class="w3-col s11"></div>
+                <div id="sideScale" class="w3-col s1 w3-show">
+                    <img id="theSideScale" src="" alt="Side Scale" style="max-height:100%; width:auto">
+                </div>
+                <div id="botScale" class="w3-col s11 w3-hide">
+                    <img id="theScale" src="" alt="Bottom Scale" style="max-height:100%">
+                </div>
+            </div>
+            <div id="sounding" class="w3-hide s11">
+                <img id="theSounding" src="" alt="The Sounding">
+            </div>
+        </div>
+            
+
+        <script>
+            $(document).ready(initIt());
+        </script>
+
+	<script>
+	    function about() {
+	        alert("This page is derived from the work of Dr. Jack Glendening " +
+		      "and Paul Scorer.\n\n" +
+		      "Click to select region, model, date, time and plot you want to view.\n\n" +
+		      "Some fields are scrollable, in particular the list of plots " +
+		      "available. If you want to see even more plot choices, click " +
+		      "on 'Short List'.\n\n" +
+		      "Depending on window size, soundings are scrollable both vertically " +
+		      "and horizontally.\n\n" +
+		      "Left-click the map to cycle through times. Right-click or long-left-click " +
+		      "a map location to get the value at that location.\n\n" +
+		      "A bookmark can be created that takes you directly to your favorite region/model/plot. " +
+		      "Set up the screen the way you like it, and click 'Get URL'. Then save " +
+		      "the current location as a bookmark. Note the date/time will not be saved.\n\n" +
+		      "Questions/comments to steve@thepaavolas.net");
+	    }
+        </script>
+    </body>
+</html>

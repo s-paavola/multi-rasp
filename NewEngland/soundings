@@ -1,0 +1,17 @@
+# Source file specifying units to use in plots, and a list of locations for soundings.
+# Comments starting with # will be deleted
+# Blank lines (after comment deletion) will be ignored
+
+units: american		# units to use in plots - alternatives are metric and celsius
+
+# Locations for soundings - format is name; latitude; longitude
+Sterling; 42.4259167; -71.7928611  
+Jaffrey; 42.8051342; -72.0030219  
+Springfield; 43.3437222; -72.5172778  
+Franconia; 44.1949722; -71.7505556
+Newfound Valley; 43.5920181; -71.7514681
+Danielson; 41.8197500; -71.9009722
+Sugarbush; 44.1173889; -72.8270000
+Post Mills; 43.8837222; -72.2520833
+North Adams; 42.6962538; -73.1705531
+Waterbury; 41.4785556; -73.1352500

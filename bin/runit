@@ -1,0 +1,34 @@
+#! /bin/bash
+
+# go to base directory
+cd `dirname $0`;
+cd ..
+
+# Get email address
+adminEmail=`grep ADMIN_EMAIL_ADDRESS site_params | sed -e "s/.*'\(.*\)'.*/\1/"`
+
+# Abort if job already running
+if pgrep -c GM.pl > /dev/null; then
+    me=`basename $0`
+    cat << __EOF__ | mail -s "RASP Failure: job already running" $adminEmail
+$me $*: found GM.pl already running
+__EOF__
+    exit
+fi
+
+mkdir -p LOG
+find LOG -mtime +5 -delete
+
+logFile=`date +LOG/%FT%T.log`
+
+# cp -p 1.log $logFile    # only for testing
+# Run it!!
+bin/GM.pl $* >& $logFile
+
+# check for expected end and no failures
+fail=`egrep -c "failure|file length" $logFile`
+tail -1 $logFile | grep -q 'Elapsed time was'
+if [ $? -ne 0 -o $fail -ne 0 ]; then
+    # email results
+    mail -s "RASP Failure: $logFile" $adminEmail < $logFile
+fi

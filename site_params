@@ -1,0 +1,32 @@
+############################################################################
+###############  THIS FILE READ AFTER NORMAL PARAMETERS SET  ############### 
+###############         SO CAN BE USED TO ALTER THEM         ############### 
+###############            (utilizes perl coding)            ############### 
+############################################################################
+
+use strict;
+
+############  SITE-SPECIFIC PARAMETERS FOLLOW  ################## 
+
+### EMAIL ADDRESS where error messages are sent
+### also used for anonymous ftp login password so CANNOT BE BLANK!
+our $ADMIN_EMAIL_ADDRESS = '';
+
+### airspace files to upload and plot
+our @airspaceFiles = ( "CLASS_B.kmz", "CLASS_C.kmz", "CLASS_D.kmz",
+		       "PROHIBITED.kmz", "RESTRICTED.kmz" );
+
+### base URL for airspace files - can be empty if co-located
+our $airspaceBaseUrl = "";
+
+### Initial region to display if region not provided as query parameter.
+### If this parameter not supplied, the first region alphabetically
+### will be used.
+our $initialRegion = "";
+
+### Web server FTP parameters - comment out if FTP transfers not needed
+#our $Server = "server.com";
+#our $ServerLogin = "username";
+#our $ServerPassword = "password";
+#our $ServerDir = "directory";
+1.;

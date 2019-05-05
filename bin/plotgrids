@@ -1,0 +1,8 @@
+pushd `dirname $0`
+cd ..
+BASEDIR=$PWD
+echo BASEDIR=$BASEDIR
+popd
+rm -f wps_show_dom.png
+ncl $BASEDIR/bin/plotgrids_new.ncl
+eog wps_show_dom.png

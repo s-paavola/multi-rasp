@@ -1,0 +1,19 @@
+#############################################################################
+### NewEngland parameters for nam model runs
+#############################################################################
+
+use strict;
+use warnings;
+
+use Model;
+
+our $model = Model->new(
+    modelName	=> 'nam',
+    grid	=> '12x4km',
+    timeZone	=> 'US/Eastern',
+    day		=> 1,
+    plotTimes	=> [ '1400', '1500', '1600', '1700', '1800', '1900', '2000', '2100', '2200' ],
+    plotSize	=> '800x800',
+    );
+
+1.;

@@ -1,0 +1,7 @@
+*km/*.nc
+*km/*.log
+gfs+?
+gfs
+hrrr
+nam+?
+nam
