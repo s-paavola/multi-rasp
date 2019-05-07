@@ -17,38 +17,6 @@ use warnings;
 ### Updated by Paul Scorer
 ### Re-written by Steve Paavola
 
-############## PROGRAM COPYRIGHT NOTICE #################################
-##
-##   PROGRAM COPYRIGHT NOTICE
-##
-##   RASP (Regional Atmospheric Soaring Predictions) COMPUTER PROGRAM
-##   Original Creator: Dr. John W. (Jack) Glendening, Meteorologist (drjack@drjack.info)
-##   Copyright 2005-2006  by John W. Glendening   All rights reserved.
-##
-## This program is at present NOT in the public domain and is intended
-## to be utilized only by the copyright holder or those specifically
-## designated by him to run local versions for regional forecasting.
-## It is not be be used, copied, modified, or distributed without the
-## written permission of the copyright holder.
-##
-## The copyright holder will not be liable for any direct, indirect,
-## or consequential damages arising out of any use of the program or
-## documentation.
-##
-## Title to copyright in this program and any associated documentation
-## will at all times remain with copyright holder.
-##
-## However, in the event of the death of the original creator, this program
-## and all RASP and BLIP programs, scripts, data and information are to be
-## released under the terms of version 2 of the GNU General Public License.
-## A copy of that license should be in the "gnu_gpl_license.txt" file,
-## but a copy of the GNU General Public License can also be
-## obtained from the Free Software Foundation, Inc., 59 Temple Place -
-## Suite 330, Boston, MA 02111-1307, USA, or, on-line at
-## http://www.gnu.org/copyleft/gpl.html.
-##
-#########################################################################
-
 #########################################################################
 ##
 ## Usage: GM.pl [jobarg*] [-d] [-t xx] [-v] [-s stage] [-h]
