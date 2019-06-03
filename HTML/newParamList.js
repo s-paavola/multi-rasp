@@ -175,14 +175,14 @@ var	plotsList  = [
 
 var paramName = 	[];
 
-paramName["blwindspd"] = ["wind speed"];
-paramName["blwinddir"] = ["wind direction"];
-paramName["bltopwindspd"] = ["wind speed"];
-paramName["bltopwinddir"] = ["wind direction"];
-paramName["sfcwind0spd"] = ["wind speed"];
-paramName["sfcwind0dir"] = ["wind direction"];
-paramName["sfcwindspd"] = ["wind speed"];
-paramName["sfcwinddir"] = ["wind direction"];
+paramName["blwindspd"] = ["wind speed (BL avg)"];
+paramName["blwinddir"] = ["wind direction (BL avg)"];
+paramName["bltopwindspd"] = ["wind speed (BL top)"];
+paramName["bltopwinddir"] = ["wind direction (BL top)"];
+paramName["sfcwind0spd"] = ["wind speed (BL 2m)"];
+paramName["sfcwind0dir"] = ["wind direction (BL 2m)"];
+paramName["sfcwindspd"] = ["wind speed (BL 10m)"];
+paramName["sfcwinddir"] = ["wind direction (BL 10m)"];
 paramName["press1000wspd"] = ["wind speed"];
 paramName["press1000wdir"] = ["wind direction"];
 paramName["press950wspd"] = ["wind speed"];
