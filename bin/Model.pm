@@ -290,6 +290,7 @@ sub _do_prep {
     # Path to METGRID.TBL
     my $path = $self->_getTablePath("METGRID.TBL");
     my $METGRID_TBL_PATH = `dirname $path`;
+    chomp ($METGRID_TBL_PATH);
     
     my $wpsInput = "$refDir/" . $self->grid . "/namelist.wps";
     open (NAMELIST, "<", "$wpsInput") or die "Can't open $wpsInput - $!";

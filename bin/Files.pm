@@ -124,7 +124,7 @@ sub downloadFiles {
             my $dt = DateTime->now - $self->expectTime;
             my $late = $dt->in_units( 'minutes' );
             die "timeout waiting for " . $self->ftpDirectory if $late > 120;
-            print "   Waited $late minutes for $file\n";
+            print "   Waited $late minutes for $file\n" unless $cnt > 0;
             last;
         }
         my $time = `/usr/bin/date +%H:%M:%S`;

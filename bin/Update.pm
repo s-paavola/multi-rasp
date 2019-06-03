@@ -190,11 +190,5 @@ sub soundings
     return getSoundings($region, $VERBOSE);
 }
 
-# init("GM/rasp.region_data.ncl");
-# fudge values for testing
-# $pclFile = "GM/rasp.region_data.ncl";
-# soundings("NewEngland", "NewEngland/soundings", 0);
-# soundings("PANOCHE", "PANOCHE/soundings", 0);
-
 no Update;
 1;

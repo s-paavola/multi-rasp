@@ -417,7 +417,7 @@ sub sendFiles
     {
         $self->_log("::sendFiles retry # $try") if $try > 0;
         # Create connection
-        my $ftp = Net::FTP->new($self->Server, Debug => $self->VERBOSE > 1);
+        my $ftp = Net::FTP->new($self->Server, Timeout => 10, Debug => $self->VERBOSE > 1);
         if (!$ftp)
         {
             print "Cannot connect to ".$self->Server.": $@\n";
