@@ -92,7 +92,7 @@ sub downloadFiles {
     }
     if (!$ftp->cwd($self->ftpDirectory))
     {
-        print "Cannot change working directory: ", $ftp->message, "\n";
+        print $self->ftpDirectory, ": ", $ftp->message;
         return $fnfDelay;
     }
     $ftp->binary();

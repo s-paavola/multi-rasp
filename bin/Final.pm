@@ -430,7 +430,7 @@ sub sendFiles
         }
         if (!$ftp->cwd($self->ServerDir))
         {
-            print "Cannot change working directory: ", $ftp->message, "\n";
+            print $self->ServerDir, ": ", $ftp->message;
             last;
         }
         $ftp->binary();
@@ -504,7 +504,7 @@ sub cleanup
     $ftp->login($self->UserName, $self->Password)
         or die "Cannot login ", $ftp->message;
     $ftp->cwd($self->ServerDir)
-        or die "Cannot change working directory: ", $ftp->message;
+        or die $self->ServerDir, ": ", $ftp->message;
     for my $regionIdx (0 .. $#$regions)
     {
 	my $region = $$regions[$regionIdx]{name};
