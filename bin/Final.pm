@@ -413,25 +413,26 @@ sub sendFiles
     push @files, `$cmd`;
     push @files, join "/", $plot->plotDir, "namelist.wps";
     
+    my $ftp;
     for (my $try = 0; $try < 3 && @files; $try++)
     {
         $self->_log("::sendFiles retry # $try") if $try > 0;
         # Create connection
-        my $ftp = Net::FTP->new($self->Server, Timeout => 10, Debug => $self->VERBOSE > 1);
+        $ftp = Net::FTP->new($self->Server, Timeout => 10, Debug => $self->VERBOSE > 1);
         if (!$ftp)
         {
             print "Cannot connect to ".$self->Server.": $@\n";
-            last;
+            next;
         }
         if (!$ftp->login($self->UserName, $self->Password))
         {
             print "Cannot login ", $ftp->message, "\n";
-            last;
+            next;
         }
         if (!$ftp->cwd($self->ServerDir))
         {
             print $self->ServerDir, ": ", $ftp->message;
-            last;
+            next;
         }
         $ftp->binary();
         $ftp->mkdir($plot->plotDir, 1);
@@ -445,7 +446,7 @@ sub sendFiles
             } else {
                 if (!$ftp->put($self->HTMLdir."/$statFile", $statFile))
                 {
-                    print $ftp->message, ": $statFile\n";
+                    print $ftp->message, ": $statFile\n" unless $ftp->code == 421;
                     $self->SendModified->enqueue($statFile);
                     last;
                 }
@@ -457,13 +458,14 @@ sub sendFiles
             if (!$ftp->put($self->HTMLdir."/$f", $f) )
             {
 		# failed, report it, put it back onto the queue, and try again
-                print $ftp->message, ": $f\n";
+                print $ftp->message, ": $f\n" unless $ftp->code == 421;
                 push @files, $f;
                 last;
             }
 	    $try = 0;
         }
     }
+    $ftp->quit();
     die "Upload failed" if @files;
 }
 
@@ -499,31 +501,40 @@ sub cleanup
     
     # Server directories
     return unless $self->Server;
-    my $ftp = Net::FTP->new($self->Server, Debug => $self->VERBOSE > 1)
-        or die "Cannot connect to ".$self->Server.": $@";
-    $ftp->login($self->UserName, $self->Password)
-        or die "Cannot login ", $ftp->message;
-    $ftp->cwd($self->ServerDir)
-        or die $self->ServerDir, ": ", $ftp->message;
-    for my $regionIdx (0 .. $#$regions)
+    DIR_RETRY: for my $try (0 .. 3)
     {
-	my $region = $$regions[$regionIdx]{name};
-        $self->_debug("::cleanup looking at server $region");
-        my @days = $ftp->ls($region)
-            or die("Couldn't get ftp directory: ".$ftp->message);
-        DIR: foreach my $dayDir (@days)
-        {
-            $self->_debug("::cleanup checking $dayDir");
-            my (undef, $date) = split "/", $dayDir;
-            my $localDays = $$regions[$regionIdx]{dates};;
-            for my $i (0 .. $#$localDays)
-            {
-                next DIR if ($date eq $$localDays[$i]);
-            }
-            $self->_log("::cleanup removing server $dayDir");
-            $ftp->rmdir($dayDir, 1)
-                or die("::clenaup failed rmdir: ".$ftp->message);
-        }
+	$self->_log("FTP dir retry #  ".$try) unless $try == 0;
+	my $ftp = Net::FTP->new($self->Server, Debug => $self->VERBOSE > 1)
+	    or die "Cannot connect to ".$self->Server.": $@";
+	$ftp->login($self->UserName, $self->Password)
+	    or die "Cannot login ", $ftp->message;
+	$ftp->cwd($self->ServerDir)
+	    or die $self->ServerDir, ": ", $ftp->message;
+	for my $regionIdx (0 .. $#$regions)
+	{
+	    my $region = $$regions[$regionIdx]{name};
+	    $self->_debug("::cleanup looking at server $region");
+	    my @days = $ftp->ls($region)
+		or die("Couldn't get ftp directory: ".$ftp->message);
+	    DIR: foreach my $dayDir (@days)
+	    {
+		$self->_debug("::cleanup checking $dayDir");
+		my (undef, $date) = split "/", $dayDir;
+		my $localDays = $$regions[$regionIdx]{dates};;
+		for my $i (0 .. $#$localDays)
+		{
+		    next DIR if ($date eq $$localDays[$i]);
+		}
+		$self->_log("::cleanup removing server $dayDir");
+		if (!$ftp->rmdir($dayDir, 1))
+		{
+		    next DIR_RETRY if ($ftp->code == 421);
+		    die("::cleanup failed rmdir: ".$ftp->message);
+		}
+	    }
+	}
+	# nothing more to do
+	last;
     }
 }
 
