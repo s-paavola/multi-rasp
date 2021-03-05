@@ -29,4 +29,5 @@ our $initialRegion = "";
 #our $ServerLogin = "username";
 #our $ServerPassword = "password";
 #our $ServerDir = "directory";
+#our $Mode = "rsync";    # default is "ftp"
 1.;

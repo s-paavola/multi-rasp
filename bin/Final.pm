@@ -14,6 +14,9 @@ use threads;
 use threads::shared;
 use Thread::Queue;
 use Net::FTP;
+use Net::SFTP::Foreign;
+use File::Rsync;;
+use Cwd;
 
 has 'HTMLdir' =>    ( is => 'ro', isa => 'Str', required => 1 );
 has 'AirspaceFiles' => ( is => 'ro', isa => 'ArrayRef' );
@@ -23,6 +26,7 @@ has 'Server' =>     ( is => 'ro', isa => 'Maybe[Str]' );
 has 'ServerDir' =>  ( is => 'ro', isa => 'Maybe[Str]' );
 has 'UserName' =>   ( is => 'ro', isa => 'Maybe[Str]' );
 has 'Password' =>   ( is => 'ro', isa => 'Maybe[Str]' );
+has 'Mode' =>       ( is => 'ro', isa => 'Maybe[Str]' );
 has 'VERBOSE' =>    ( is => 'ro', isa => 'Int' );
 has 'daysStatus' => ( is => 'rw', isa => 'HashRef', builder => '_buildDaysStatus');
 has 'plotQueue' =>  ( is => 'ro', isa => 'Thread::Queue', default => sub
@@ -65,16 +69,28 @@ sub BUILD {
     my $self = shift;
     threads->create(\&sendPlotsThread, $self);
     # Upload basic inventory
-    for (@inventory, @{$self->AirspaceFiles})
+    if ($self->Mode && $self->Mode eq "rsync")
     {
-        $self->SendModified->enqueue( $_ );
-        if ( -d $self->HTMLdir."/$_")
-        {
-            opendir (DIR, $self->HTMLdir."/$_");
-            while (my $file = readdir(DIR))
-            {
-                next if ($file =~ m|^\.|);
-                $self->SendModified->enqueue( "$_/$file" );
+	my $cwd = getcwd;
+	chdir $self->HTMLdir;
+	my $rsync = File::Rsync->new(compress => 1, archive => 1, rsh => "/usr/bin/ssh");
+	$rsync->exec(src => \@inventory, dest => $self->_rsyncDest());
+	$rsync->exec(src => \@{$self->AirspaceFiles}, dest => $self->_rsyncDest());
+	chdir $cwd;
+    }
+    else
+    {
+	for (@inventory, @{$self->AirspaceFiles})
+	{
+	    $self->SendModified->enqueue( $_ );
+	    if ( -d $self->HTMLdir."/$_")
+	    {
+		opendir (DIR, $self->HTMLdir."/$_");
+		while (my $file = readdir(DIR))
+		{
+		    next if ($file =~ m|^\.|);
+		    $self->SendModified->enqueue( "$_/$file" );
+		}
             }
         }
     }
@@ -300,7 +316,25 @@ sub sendPlotsThread
         $self->_debug ("::dequeue: ", $plot->plotDir(), " - ", $plot->time());
         $self->updateStatus($plot);
         $self->updateDaysStatus($plot);
-        $self->sendFiles($plot);
+	if ($self->Mode)
+	{
+	    if ($self->Mode eq "rsync")
+	    {
+		$self->_sendRsyncFiles($plot);
+	    }
+	    elsif ($self->Mode eq "ftp" || $self->Mode eq "")
+	    {
+		$self->_sendFtpFiles($plot);
+	    }
+	    else
+	    {
+		die ("Unknown transfer mode ".$self->Mode);
+	    }
+	}
+	else
+	{
+	    $self->_sendFtpFiles($plot);
+	}
     }
     $self->_log(" exiting");
 }
@@ -398,7 +432,7 @@ sub updateDaysStatus
     close STAT;
 }
 
-sub sendFiles
+sub _sendFtpFiles
 {
     my $self = shift;
     my $plot = shift;
@@ -469,11 +503,83 @@ sub sendFiles
     die "Upload failed" if @files;
 }
 
+sub _rsyncDest
+{
+    my $self = shift;
+    my $dest = $self->UserName."@".$self->Server.":".$self->ServerDir;;
+    return $dest;
+}
+
+sub _rsyncMkdirs
+{
+    my $self = shift;
+    my $rsync = shift;
+    my $dir = shift;
+
+    my $src = $self->HTMLdir;
+    my $dest = $self->_rsyncDest();
+    foreach (split '/', $dir)
+    {
+	$src = join "/", $src, $_;
+	$rsync->exec(src => $src, dest => $dest, dirs => 1) or die "rsync mkdir failed\n" . join("\n", $rsync->err);
+	$dest = join "/", $dest, $_;
+    }
+}
+
+sub _rsyncSendFiles
+{
+    my $self = shift;
+    my $rsync = shift;
+    my $src = shift;
+    my $dest = $self->_rsyncDest()."/".shift;
+
+    my $cwd = getcwd;
+    chdir $self->HTMLdir;
+    $rsync->exec(src => $src, dest => $dest) or die "rsyncSendFiles failed\n" . join ("\n", $rsync->err);;
+    chdir $cwd;
+}
+
+sub _sendRsyncFiles
+{
+    my $self = shift;
+    my $plot = shift;
+    
+    return unless $self->Server;
+
+    my $rsync = File::Rsync->new(compress => 1, rsh => "/usr/bin/ssh");
+
+    # Upload annotated status files
+    while (my $statFile = $self->SendModified->dequeue_nb())
+    {
+	if ( -d $self->HTMLdir."/$statFile")
+	{
+	    $self->_rsyncMkdirs($rsync, $statFile);
+	} else {
+	    $self->_rsyncSendFiles($rsync, $statFile, $statFile);
+	}
+    }
+
+    my($region, $date, $model) = split '/', $plot->plotDir;
+    my $time = $plot->time;
+    my $cmd = "cd ".$self->HTMLdir."; ls ".join "/", $plot->plotDir, "*${time}local*";
+    my @files = `$cmd`;
+    s/\n// for @files;
+    push @files, join "/", $plot->plotDir, "namelist.wps";
+
+    $self->_rsyncMkdirs($rsync, $plot->plotDir);
+
+    $self->_rsyncSendFiles($rsync, \@files, $plot->plotDir);
+    my $dateDir = join("/", $region, $date);
+    $self->_rsyncSendFiles($rsync, join("/", $dateDir, "status.json"), $dateDir);
+    $self->_rsyncSendFiles($rsync, "current.json", "current.json");
+    #$self->_log("Finished $region/$date/$model/$time");
+}
+
 # Remove unreferenced plot directories
 sub cleanup
 {
     my $self = shift;
-    
+
     # Local directories
     my $regions = $self->daysStatus->{regions};
     for my $regionIdx (0 .. $#$regions)
@@ -498,9 +604,33 @@ sub cleanup
             `$cmd`;
         }
     }
+
+    # cleanup server directories
+    return unless $self->Server;
+    if ($self->Mode)
+    {
+	if ($self->Mode eq "rsync")
+	{
+	    $self->_cleanupSftp();
+	}
+	else
+	{
+	    $self->_cleanupFtp();
+	}
+    }
+    else
+    {
+	$self->_cleanupFtp();
+    }
+}
+
+# Remove unreferened server plot directories using ftp
+sub _cleanupFtp
+{
+    my $self = shift;
     
     # Server directories
-    return unless $self->Server;
+    my $regions = $self->daysStatus->{regions};
     DIR_RETRY: for my $try (0 .. 3)
     {
 	$self->_log("FTP dir retry #  ".$try) unless $try == 0;
@@ -531,6 +661,48 @@ sub cleanup
 		    next DIR_RETRY if ($ftp->code == 421);
 		    die("::cleanup failed rmdir: ".$ftp->message);
 		}
+	    }
+	}
+	# nothing more to do
+	last;
+    }
+}
+
+# Remove unreferenced server plot directories using sftp
+sub _cleanupSftp
+{
+    my $self = shift;
+    
+    # Server directories
+    my $regions = $self->daysStatus->{regions};
+    DIR_RETRY: for my $try (0 .. 3)
+    {
+	$self->_log("SFTP dir retry #  ".$try) unless $try == 0;
+	my $sftp = Net::SFTP::Foreign->new($self->Server,
+				  user => $self->UserName);
+	$sftp->die_on_error("Cannot connect to ".$self->Server);
+	$sftp->setcwd($self->ServerDir);
+	$sftp->die_on_error("Cannot chdir to ".$self->ServerDir);
+	for my $regionIdx (0 .. $#$regions)
+	{
+	    my $region = $$regions[$regionIdx]{name};
+	    $self->_debug("::cleanup looking at server $region");
+	    my $days = $sftp->ls($region, names_only=>1);
+	    $sftp->die_on_error("Couldn't get sftp directory $region");
+	    DIR: foreach my $date (@$days)
+	    {
+		$self->_debug("::cleanup checking $date");
+		$date eq "." and next;
+		$date eq ".." and next;
+		my $localDays = $$regions[$regionIdx]{dates};;
+		for my $i (0 .. $#$localDays)
+		{
+		    next DIR if ($date eq $$localDays[$i]);
+		}
+		my $dayDir = "$region/$date";
+		$self->_log("::cleanup removing server $dayDir");
+		my $code = $sftp->rremove($dayDir);
+		$sftp->die_on_error("::cleanup failed rmdir $dayDir");
 	    }
 	}
 	# nothing more to do
