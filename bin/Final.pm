@@ -563,7 +563,7 @@ sub _sendRsyncFiles
     my $time = $plot->time;
     my $cmd = "cd ".$self->HTMLdir."; ls ".join "/", $plot->plotDir, "*${time}local*";
     my @files = `$cmd`;
-    s/\n// for @files;
+    chomp for @files;
     push @files, join "/", $plot->plotDir, "namelist.wps";
 
     $self->_rsyncMkdirs($rsync, $plot->plotDir);

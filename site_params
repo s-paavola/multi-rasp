@@ -10,24 +10,35 @@ use strict;
 
 ### EMAIL ADDRESS where error messages are sent
 ### also used for anonymous ftp login password so CANNOT BE BLANK!
-our $ADMIN_EMAIL_ADDRESS = '';
+our $ADMIN_EMAIL_ADDRESS = 'steve@thepaavolas.net';
 
 ### airspace files to upload and plot
 our @airspaceFiles = ( "CLASS_B.kmz", "CLASS_C.kmz", "CLASS_D.kmz",
 		       "PROHIBITED.kmz", "RESTRICTED.kmz" );
 
 ### base URL for airspace files - can be empty if co-located
-our $airspaceBaseUrl = "";
+our $airspaceBaseUrl = "http://www.thepaavolas.net/rasp/";
 
 ### Initial region to display if region not provided as query parameter.
 ### If this parameter not supplied, the first region alphabetically
 ### will be used.
-our $initialRegion = "";
+our $initialRegion = "NewEngland";
 
 ### Web server FTP parameters - comment out if FTP transfers not needed
 #our $Server = "server.com";
 #our $ServerLogin = "username";
 #our $ServerPassword = "password";
 #our $ServerDir = "directory";
-#our $Mode = "rsync";    # default is "ftp"
+#our $Server = "ftp.thepaavolas.net";
+#our $ServerLogin = "s_paavo1a";
+#our $ServerPassword = "cimfuT-4wibju-hojviw";
+#our $ServerDir = "rasp";
+#our $Server = "ftp.soargbsc.com";
+#our $ServerLogin = "sp_rasp";
+#our $ServerPassword = '$0aR_G%sC=r@sP';
+#our $ServerDir = ".";
+our $Server = "soargbsc.net";
+our $ServerLogin = "rasp";
+our $ServerDir = "htdocs";
+our $Mode = "rsync";
 1.;

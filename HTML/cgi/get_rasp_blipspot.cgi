@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w -T
 
 ### GET RASP BLIPSPOT FOR SPECIFIED IMAGE LOCATION
-### eg call ala http://www.drjack.info/cgi-bin/get_rasp_blipspot.cgi?&region=PANOCHE&grid=d2&day=0&i=559&k=70&width=585&height=585
+### eg call ala http://www.drjack.info/cgi-bin/get_rasp_blipspot.cgi?&region=PANOCHE&day=0&i=559&k=70&width=585&height=585
 
 ################################################################################
 
@@ -14,12 +14,6 @@ use CGI::Carp qw(fatalsToBrowser);
 
 #untaint - UNTAINT PATH
 $ENV{'PATH'} = '/bin:/usr/bin';
-
-#print "Content-type: text/plain\n\n";
-#for my $k (sort (keys %ENV))
-#{
-#    print "$k= $ENV{$k}<br>\n";
-#}
 
 my $script_filename = $ENV{"SCRIPT_FILENAME"};
 my ($PROGRAMNAME, $SCRIPTDIR);
@@ -50,8 +44,8 @@ if ( defined $region && $region =~ m|^(\w+)$| ) { $region = $1 ; } # alphanumeri
 else { die "$PROGRAMNAME ERROR EXIT: bad region argument - $region"; }
 if ( defined $date && $date =~ m|^([[:digit:]-]+)$| ) { $date = $1 ; } # date format
 else { die "$PROGRAMNAME ERROR EXIT: bad date argument - $date"; }
-if ( defined $model && $model =~ m|^(\w+)$| ) { $model = $1 ; } # date format
-else { die "$PROGRAMNAME ERROR EXIT: bad date argument - $model"; }
+if ( defined $model && $model =~ m|^(\w+)$| ) { $model = $1 ; } # single word
+else { die "$PROGRAMNAME ERROR EXIT: bad model argument - $model"; }
 if ( defined $plottime && $plottime =~ m|^([0-9][0-9][0-9][0-9])$| ) { $plottime = $1 ; } # alphanumeric+
 else { die "$PROGRAMNAME ERROR EXIT: bad TIME argument - $plottime"; }
 if ( defined $ilat && $ilat =~ m|^([0-9+-][0-9.]*)$| ) { $ilat = $1 ; } # decimal only

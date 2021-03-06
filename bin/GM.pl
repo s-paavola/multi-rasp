@@ -92,6 +92,8 @@ $ENV{BASEDIR} = $BASEDIR;
 ### Process arguments
 use DateTime;
 use List::MoreUtils qw(uniq);
+use threads;
+use threads::shared;
 use Model;
 use Update;
 
@@ -236,8 +238,6 @@ print "      Verbosity: $VERBOSE\n";
 print "      Jobs: @JOBARG\n";
 
 ### Setup for multi-threading
-use threads;
-use threads::shared;
 use Thread::Queue;
 use DoPlot;
 use Files;
