@@ -209,7 +209,8 @@ for (@JOBARG)
 
 ### Get site params
 our $numThreads = `grep -c processor /proc/cpuinfo` + 1;
-our $numPlotThreads :shared = 2;
+our $numPlotThreads = 2;
+our $plotThreadCounter :shared = $numPlotThreads;
 our $ADMIN_EMAIL_ADDRESS;
 our @airspaceFiles;
 our $airspaceBaseUrl = "";
@@ -336,10 +337,10 @@ my $startTime;
 sub runJobs {
     # Turn on autoflush
     $| = 1;
-    while ($plotCount)
+    while ($jobCount > 0 || $plotQueue->pending() > 0)
     {
         # look for a plot job
-        if ($numPlotThreads > 0 || $jobQueue->pending() == 0)
+        if ($plotThreadCounter > 0 || $jobQueue->pending() == 0)
         {
             my $job = undef;
             {
@@ -367,8 +368,8 @@ sub runJobs {
             if (defined $job)
             {
                 {
-                    lock $numPlotThreads;
-                    $numPlotThreads--;
+                    lock $plotThreadCounter;
+                    $plotThreadCounter--;
                 }
                 try {
                     $job->run();
@@ -378,9 +379,8 @@ sub runJobs {
                 $final->addPlot($job);
                 lock $plotCount;
                 $plotCount--;
-                lock $numPlotThreads;
-                $numPlotThreads++;
-                $final->end() unless $plotCount > 0;
+                lock $plotThreadCounter;
+                $plotThreadCounter++;
                 next;
             }
         }
@@ -405,9 +405,6 @@ sub runJobs {
                 $job->run($plotQueue);
             } catch {
                 warn "caught failure:\n$_";
-                lock $plotCount;
-                $plotCount -= @{$job->plotTimes};
-                $final->end() unless $plotCount > 0;
             };
             lock $jobCount;
             $jobCount--;
@@ -420,7 +417,8 @@ sub runJobs {
         # Nothing to do right now
         sleep 10;
     }
-    # print "runJobs exiting: jobCount = $jobCount, plotCount = $plotCount\n";
+    $final->end() unless $plotThreadCounter != $numPlotThreads;
+    #print "runJobs exiting: jobCount = $jobCount, plotCount = $plotCount\n";
 }
 
 # Start the threads

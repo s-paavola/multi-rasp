@@ -115,7 +115,7 @@ sub downloadFiles {
             my $size = $ftp->size($file);
             if ( -z $where || $size != -s $where )
             {
-                print "FTP file length problem\n";
+                print "FTP file length problem - $file\n";
                 $where = "";
             }
         }

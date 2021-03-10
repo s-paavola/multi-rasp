@@ -15,7 +15,6 @@ use threads::shared;
 use Thread::Queue;
 use Net::FTP;
 use Net::SFTP::Foreign;
-use File::Rsync;;
 use Cwd;
 
 has 'HTMLdir' =>    ( is => 'ro', isa => 'Str', required => 1 );
@@ -69,30 +68,18 @@ sub BUILD {
     my $self = shift;
     threads->create(\&sendPlotsThread, $self);
     # Upload basic inventory
-    if ($self->Mode && $self->Mode eq "rsync")
+    for (@inventory, @{$self->AirspaceFiles})
     {
-	my $cwd = getcwd;
-	chdir $self->HTMLdir;
-	my $rsync = File::Rsync->new(compress => 1, archive => 1, rsh => "/usr/bin/ssh");
-	$rsync->exec(src => \@inventory, dest => $self->_rsyncDest());
-	$rsync->exec(src => \@{$self->AirspaceFiles}, dest => $self->_rsyncDest());
-	chdir $cwd;
-    }
-    else
-    {
-	for (@inventory, @{$self->AirspaceFiles})
+	$self->SendModified->enqueue( $_ );
+	if ( -d $self->HTMLdir."/$_")
 	{
-	    $self->SendModified->enqueue( $_ );
-	    if ( -d $self->HTMLdir."/$_")
+	    opendir (DIR, $self->HTMLdir."/$_");
+	    while (my $file = readdir(DIR))
 	    {
-		opendir (DIR, $self->HTMLdir."/$_");
-		while (my $file = readdir(DIR))
-		{
-		    next if ($file =~ m|^\.|);
-		    $self->SendModified->enqueue( "$_/$file" );
-		}
-            }
-        }
+		next if ($file =~ m|^\.|);
+		$self->SendModified->enqueue( "$_/$file" );
+	    }
+	}
     }
 }
 
@@ -318,9 +305,9 @@ sub sendPlotsThread
         $self->updateDaysStatus($plot);
 	if ($self->Mode)
 	{
-	    if ($self->Mode eq "rsync")
+	    if ($self->Mode eq "sftp")
 	    {
-		$self->_sendRsyncFiles($plot);
+		$self->_sendSftpFiles($plot);
 	    }
 	    elsif ($self->Mode eq "ftp" || $self->Mode eq "")
 	    {
@@ -503,76 +490,62 @@ sub _sendFtpFiles
     die "Upload failed" if @files;
 }
 
-sub _rsyncDest
-{
-    my $self = shift;
-    my $dest = $self->UserName."@".$self->Server.":".$self->ServerDir;;
-    return $dest;
-}
-
-sub _rsyncMkdirs
-{
-    my $self = shift;
-    my $rsync = shift;
-    my $dir = shift;
-
-    my $src = $self->HTMLdir;
-    my $dest = $self->_rsyncDest();
-    foreach (split '/', $dir)
-    {
-	$src = join "/", $src, $_;
-	$rsync->exec(src => $src, dest => $dest, dirs => 1) or die "rsync mkdir failed\n" . join("\n", $rsync->err);
-	$dest = join "/", $dest, $_;
-    }
-}
-
-sub _rsyncSendFiles
-{
-    my $self = shift;
-    my $rsync = shift;
-    my $src = shift;
-    my $dest = $self->_rsyncDest()."/".shift;
-
-    my $cwd = getcwd;
-    chdir $self->HTMLdir;
-    $rsync->exec(src => $src, dest => $dest) or die "rsyncSendFiles failed\n" . join ("\n", $rsync->err);;
-    chdir $cwd;
-}
-
-sub _sendRsyncFiles
+sub _sendSftpFiles
 {
     my $self = shift;
     my $plot = shift;
     
     return unless $self->Server;
-
-    my $rsync = File::Rsync->new(compress => 1, rsh => "/usr/bin/ssh");
-
-    # Upload annotated status files
-    while (my $statFile = $self->SendModified->dequeue_nb())
-    {
-	if ( -d $self->HTMLdir."/$statFile")
-	{
-	    $self->_rsyncMkdirs($rsync, $statFile);
-	} else {
-	    $self->_rsyncSendFiles($rsync, $statFile, $statFile);
-	}
-    }
-
+    
+    # Get list of files
     my($region, $date, $model) = split '/', $plot->plotDir;
     my $time = $plot->time;
-    my $cmd = "cd ".$self->HTMLdir."; ls ".join "/", $plot->plotDir, "*${time}local*";
-    my @files = `$cmd`;
-    chomp for @files;
-    push @files, join "/", $plot->plotDir, "namelist.wps";
-
-    $self->_rsyncMkdirs($rsync, $plot->plotDir);
-
-    $self->_rsyncSendFiles($rsync, \@files, $plot->plotDir);
-    my $dateDir = join("/", $region, $date);
-    $self->_rsyncSendFiles($rsync, join("/", $dateDir, "status.json"), $dateDir);
-    $self->_rsyncSendFiles($rsync, "current.json", "current.json");
-    #$self->_log("Finished $region/$date/$model/$time");
+    
+    my $sftp;
+    #for (my $try = 0; $try < 3 && @files; $try++)
+    {
+	#$self->_log("::sendFiles retry # $try") if $try > 0;
+        # Create connection
+	$sftp = Net::SFTP::Foreign->new($self->Server,
+				  user => $self->UserName,
+			          timeout => 10,
+			          more => ['-C']);
+        if ($sftp->error)
+        {
+            print "Cannot connect to ".$self->Server.": ".$sftp->error."\n";
+            next;
+        }
+        if (!$sftp->setcwd($self->ServerDir))
+        {
+            print $self->ServerDir, ": ", $sftp->error;
+            next;
+        }
+        $sftp->mkpath($plot->plotDir);
+        
+        # Upload annotated status files
+        while (my $statFile = $self->SendModified->dequeue_nb())
+        {
+            if ( -d $self->HTMLdir."/$statFile")
+            {
+                $sftp->mkpath($statFile)
+            } else {
+                if (!$sftp->put($self->HTMLdir."/$statFile", $statFile))
+                {
+                    print $sftp->error, ": $statFile\n";
+                    $self->SendModified->enqueue($statFile);
+                    last;
+                }
+            }
+        }
+	$sftp->mput([
+		join ("/", $self->HTMLdir, $plot->plotDir, "namelist.wps"),
+		join ("/", $self->HTMLdir, $plot->plotDir, "*${time}local*")
+	    ], $plot->plotDir);
+	my $statDir = join("/", $region, $date, "status.json");
+	$sftp->put( join("/", $self->HTMLdir, $statDir), $statDir)
+	    or print "status.json: ", $sftp->error, "\n";
+	$sftp->put( join("/", $self->HTMLdir, "current.json"), "current.json");
+    }
 }
 
 # Remove unreferenced plot directories
@@ -609,7 +582,7 @@ sub cleanup
     return unless $self->Server;
     if ($self->Mode)
     {
-	if ($self->Mode eq "rsync")
+	if ($self->Mode eq "sftp")
 	{
 	    $self->_cleanupSftp();
 	}
