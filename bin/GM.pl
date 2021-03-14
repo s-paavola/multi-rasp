@@ -405,6 +405,23 @@ sub runJobs {
                 $job->run($plotQueue);
             } catch {
                 warn "caught failure:\n$_";
+		# Find the plots
+		for (0 .. $plotQueue->pending() - 1)
+                {
+		again:
+		    if (my $plot = $plotQueue->peek($_))
+		    {
+			my @path = split "/", $plot->wrfFile;
+			my $jobName = join "/", @path[-3..-2];
+			if ($jobName eq $job->jobArg)
+			{
+			    print "Deleting ", $plot->wrfFile, "\n";
+			    $plotQueue->extract($_);
+			    goto again;
+			}
+		    }
+		}
+
             };
             lock $jobCount;
             $jobCount--;
@@ -416,9 +433,10 @@ sub runJobs {
         
         # Nothing to do right now
         sleep 10;
+print "Waiting jobcount ", $jobCount, " plotpending ", $plotQueue->pending(), "\n";
     }
     $final->end() unless $plotThreadCounter != $numPlotThreads;
-    #print "runJobs exiting: jobCount = $jobCount, plotCount = $plotCount\n";
+    print "runJobs exiting: jobCount = $jobCount, plotCount = $plotCount\n";
 }
 
 # Start the threads
