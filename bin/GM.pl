@@ -433,10 +433,9 @@ sub runJobs {
         
         # Nothing to do right now
         sleep 10;
-print "Waiting jobcount ", $jobCount, " plotpending ", $plotQueue->pending(), "\n";
     }
     $final->end() unless $plotThreadCounter != $numPlotThreads;
-    print "runJobs exiting: jobCount = $jobCount, plotCount = $plotCount\n";
+    #print "runJobs exiting: jobCount = $jobCount, plotCount = $plotCount\n";
 }
 
 # Start the threads
@@ -533,6 +532,7 @@ print "   Run ending at ", $endTime->format_cldr("HH:mm:ss"), "\n";
 use DateTime::Format::Duration;
 my $fmtFunc = DateTime::Format::Duration->new( pattern => "%R", normalise => 1);
 print "   Elapsed time was ", $fmtFunc->format_duration($elapsed), "\n";
+print "   Plots not produced: ", $plotCount, "\n" if $plotCount;
 
 sub usage
 {

@@ -48,7 +48,7 @@ my %defs = (
         fileNameProto => "rap.t%02dz.awp130bgrbf%02d.grib2",
         analTimes => [ 23, 1 ],
         validTimes => [ 21, 1 ],
-        availDelay => DateTime::Duration->new(hours => 1, minutes => 00)
+        availDelay => DateTime::Duration->new(hours => 0, minutes => 55)
     },
     hrrr => {
         ftpSite => 'ftp.ncep.noaa.gov',
