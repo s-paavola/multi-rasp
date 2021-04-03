@@ -36,7 +36,7 @@ my %defs = (
     },
     gfs => {
         ftpSite => 'ftp.ncep.noaa.gov',
-        ftpDirectoryProto => "pub/data/nccf/com/gfs/prod/gfs.%Y%m%d/%H",
+        ftpDirectoryProto => "pub/data/nccf/com/gfs/prod/gfs.%Y%m%d/%H/atmos",
         fileNameProto => "gfs.t%02dz.pgrb2full.0p50.f%03d",
         analTimes => [ 18, 6 ],
         validTimes => [ 240, 3 ],
