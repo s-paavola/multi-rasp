@@ -26,6 +26,8 @@ has 'ServerDir' =>  ( is => 'ro', isa => 'Maybe[Str]' );
 has 'UserName' =>   ( is => 'ro', isa => 'Maybe[Str]' );
 has 'Password' =>   ( is => 'ro', isa => 'Maybe[Str]' );
 has 'Mode' =>       ( is => 'ro', isa => 'Maybe[Str]' );
+has 'AnalTime' =>   ( is => 'ro', isa => 'DateTime'   );
+has 'Today' =>      ( is => 'rw', isa => 'Maybe[Str]' );
 has 'VERBOSE' =>    ( is => 'ro', isa => 'Int' );
 has 'daysStatus' => ( is => 'rw', isa => 'HashRef', builder => '_buildDaysStatus');
 has 'plotQueue' =>  ( is => 'ro', isa => 'Thread::Queue', default => sub
@@ -41,6 +43,7 @@ my @inventory = (
     "rasp.js",
     "slider.png",
     "sndmkr.png",
+    "Today.png",
     "cgi"
 );
 
@@ -66,6 +69,16 @@ sub _debug {
 # Initialize run status
 sub BUILD {
     my $self = shift;
+    # Create link to today's image
+    if ($self->Today)
+    {
+	my $link = $self->Today;
+	my $date = $self->AnalTime->strftime('%F');
+	$link =~ s/date/$date/;
+	my $TodayLink = $self->HTMLdir."/Today.png";
+	unlink $TodayLink;
+	symlink ($link, $TodayLink);
+    }
     threads->create(\&sendPlotsThread, $self);
     # Upload basic inventory
     for (@inventory, @{$self->AirspaceFiles})
@@ -508,8 +521,8 @@ sub _sendSftpFiles
         # Create connection
 	$sftp = Net::SFTP::Foreign->new($self->Server,
 				  user => $self->UserName,
-			          timeout => 10,
-			          more => ['-C']);
+			          timeout => 10);
+				  #more => ['-C']);
         if ($sftp->error)
         {
             print "Cannot connect to ".$self->Server.": ".$sftp->error."\n";
@@ -528,7 +541,14 @@ sub _sendSftpFiles
             if ( -d $self->HTMLdir."/$statFile")
             {
                 $sftp->mkpath($statFile)
-            } else {
+            } elsif ( -l $self->HTMLdir."/$statFile")
+	    {
+		my $link = $self->HTMLdir."/$statFile";
+		chomp($link = `ls -l $link`);
+		$link =~ s/^.*-> //;
+		$sftp->remove($statFile);
+		$sftp->symlink($statFile, $link);
+	    } else {
                 if (!$sftp->put($self->HTMLdir."/$statFile", $statFile))
                 {
                     print $sftp->error, ": $statFile\n";
