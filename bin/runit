@@ -7,14 +7,8 @@ cd ..
 # Get email address
 adminEmail=`grep ADMIN_EMAIL_ADDRESS site_params | sed -e "s/.*'\(.*\)'.*/\1/"`
 
-# Abort if job already running
-if pgrep -c GM.pl > /dev/null; then
-    me=`basename $0`
-    cat << __EOF__ | mail -s "RASP Failure: job already running" $adminEmail
-$me $*: found GM.pl already running
-__EOF__
-    exit
-fi
+# Kill any remaining running job
+pkill GM.pl
 
 mkdir -p LOG
 find LOG -type f -mtime +5 -delete
