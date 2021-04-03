@@ -221,6 +221,7 @@ our $ServerLogin;
 our $ServerPassword;
 our $ServerDir;
 our $Mode;
+our $Today;
 require "./site_params";
 
 ### Reorder jobargs so that initialRegion is computed first
@@ -261,6 +262,8 @@ my $final = Final->new(
     UserName => $ServerLogin,
     Password => $ServerPassword,
     Mode => $Mode,
+    AnalTime => $analTime,
+    Today => $Today,
     VERBOSE =>$VERBOSE);
 
 ### SET RASP ENVIRONMENTAL PARAMETERS
