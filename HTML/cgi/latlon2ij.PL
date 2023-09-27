@@ -72,6 +72,7 @@ exit 0; }
   #4test: print "alatlon[0] alatlon[1]= $alatlon[0] $alatlon[1]  \n";
 
 ### READ RASP GRID DATA FROM NAMELIST FILE
+#print STDERR ("latlon2ij.pl   datadirname: $datadirname");
 open ( DATAFILE, "<$datadirname/namelist.wps" )
 or die "Unable to open $datadirname/namelist.wps: $@";
 while (<DATAFILE>)
@@ -122,10 +123,13 @@ if( $MOAD_DELTA_X != $MOAD_DELTA_Y )
   $LAT_TAN_P        = $MOAD_STAND_LAT ;
 
 ### LOOP OVER ALL INPUT alat,alon
-for ( $iindex=0; $iindex<$#alatlon; $iindex=$iindex+2 )
+### ERIC - Changed start from 0 to 1.
+for ( $iindex=1; $iindex<$#alatlon; $iindex=$iindex+2 )
 {
   $alat = $alatlon[$iindex] ;
   $alon = $alatlon[$iindex+1] ;
+  # print  ("alat:", $alat,  "  alon :" , $alon, "\n" );
+
   ### convert negative W longitude
   if( $alon < 0 ) { $alon = $alon + 360.; }
 
