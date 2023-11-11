@@ -14,30 +14,31 @@
 ##### PAULS - 2008-08-03 Can't have -T flag to perl. Opening a file for writing is not allowed - see "man perlsec"
 
 # Eric - Debugging
-#my $total = $#ARGV  ;
-#print "Number of arguments (0 based): $total \n";
-#my $counter = 0;
-#foreach my $a(@ARGV) {
-#	print "Arg # $counter : $a\n";
-#	$counter++;
-#}
-#  End debugging
+my $total = $#ARGV;
+print "Number of arguments (0 based): $total \n";
+my $counter = 0;
+foreach my $a (@ARGV) {
+    print "Arg # $counter : $a\n";
+    $counter++;
+}
+#End debugging
 
-# Input argument order
-# 0 Root directory
-# 1 Region
-# 2 Namelist.wps directory  eg "9x3km"
-# 3 Date YYYY-MM-DD format
-# 4 Forecast model (gfs, nam, ...)
-# 5 Grid   e.g. d2
-# 6 Time  0 or specific hour (e.g. 1000)
-# 7 Glider type (e.g. LS-4a) - must match to internal table of glider polars. May need to add yours
-# 8 Weight Info
-# 9 default Thermal sink rate in m/s
-# 10 Thermal multiplier (???)
-# 11 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
+    # Input argument order
+    # 0 Root directory
+    # 1 Region
+    # 2 Namelist.wps directory  eg "9x3km"
+    # 3 Date YYYY-MM-DD format
+    # 4 Forecast model (gfs, nam, ...)
+    # 5 Grid   e.g. d2
+    # 6 Time  0 or specific hour (e.g. 1000)
+    # 7 Glider type (e.g. LS-4a) - used just for reference
+    # 8 Weight Info
+    # 9 default Thermal sink rate in m/s
+    # 10 Thermal multiplier (???)
+    # 11 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
+    #     or "1,42.42617,-71.79383,Sterling,2,42.805,-72.003,Jaffrey,..."
 
-my $summaryJson = "";
+    my $summaryJson = "";
 if ($#ARGV < 8) {
     #expect at least 9 arguments:
     #-----------------adescription1------------------------------------
@@ -46,7 +47,7 @@ if ($#ARGV < 8) {
     $summaryJson = $summaryJson . "\\n\\t2 = Region";
     $summaryJson = $summaryJson . "\\n\\t3 = Grid";
     $summaryJson = $summaryJson . "\\n\\t4 = Time eg. 1300 (use single forecast) or 1100+ (start task at 1100)";
-    $summaryJson = $summaryJson . "\\n\\t5 = PolarInfo ";
+    $summaryJson = $summaryJson . "\\n\\t5 = PolarInfo";
     $summaryJson = $summaryJson . "\\n\\t6 = WgtInfo ";
     $summaryJson = $summaryJson . "\\n\\t7 = ThermallingSinkrate(m/s)";
     $summaryJson = $summaryJson . "\\n\\t8 = ThermalMultiplier";
@@ -86,7 +87,7 @@ if ($#ARGV < 8) {
 # program and documentation or portions thereof, including all
 # modifications.
 #
-# 3. The terms of version 2 of the GNU Genral Public License are
+# 3. The terms of version 2 of the GNU General Public License are
 # complied with.  The GNU General Public License can be viewed
 # at on-line http://www.drjack.net/INFO/gnu_gpl_license_2.txt
 # or obtained from the Free Software Foundation, Inc.,
@@ -142,17 +143,17 @@ my $mps2fpm = 196.850;
 my $mps2kt = 1.943849;
 my $kmphr2mps = 0.277778;
 
-# Extract set_glider_data() to separate file
-our (%weight_data, %polar_data, %ballast_data);
-require "./gliders.PL";
+
 require "./ij2latlon_gbsc.PL";
 require "./keyValuesToJson.PL";
 
 our ($GRID, $KGRID, $VALIDTIME, $LVALIDTIME);
 our ($DATADIR);
 our ($REGION);
+#use Data::Dumper;
+#print Dumper(\@_);
 
-my ($polarinfoarg, $wgtinfoarg, $thermallingsinkrate, $thermalmultiplier, $latlonarg);
+my ($gliderarg, $polarFactor, $polarCoefficients , $thermallingsinkrate, $thermalmultiplier, $latlonarg);
 ###### PARSE ARGUMENTS
 # Eric - updated
 $DATADIR = $ARGV[0];
@@ -172,28 +173,46 @@ if ($VALIDTIME =~ m|x$|) {
 }
 else {$LVALIDTIME = 1;}
 
-$polarinfoarg = $ARGV[4];
+$gliderarg = $ARGV[4];    # Eric - switch to gliderarg as removed polar file
 
-$wgtinfoarg = $ARGV[5];
+$polarFactor = $ARGV[5];   # adjustment to polar based on 'real' glider weight (empty + pilot + ballast) vs weight polar was calculated at
 
-if ($ARGV[6] =~ m|^([0-9.]+)*kt[s]*$|i)    # default ThermallingSinkrate input units = m/s
+$polarCoefficients = $ARGV[6];   # a,b,c coefficients to calc glider polar
+
+if ($ARGV[7] =~ m|^([0-9.]+)*kt[s]*$|i)    # default ThermallingSinkrate input units = m/s
 {$thermallingsinkrate = ${1} / ${mps2kt};} #  append kt/kts to change units
-else {$thermallingsinkrate = $ARGV[6];}
+else {$thermallingsinkrate = $ARGV[7];}
 
-$thermalmultiplier = $ARGV[7];
+$thermalmultiplier = $ARGV[8];
 
-$latlonarg = $ARGV[8]; # Track turnpoints in LAT,LON or TriGraph
+$type = $ARG[9];        # indicate if next parm is in latlon or turnpt format
+$taskpoints = $ARGV[10]; # Task turnpoints in LAT,LON
 
+#print "\ntype : $ARGV[8]";
+#print "\ntaskpoints : $ARGV[9]";
 
 my ($latlonargtail, @adesc, @atp, $nturnpts, $nleg);
 $nturnpts = 0;
-$latlonargtail = $latlonarg;
+$latlonargtail = $taskpoints;
 
 my (@alatpts, @alonpts);
+my ($tp, $lat, $lon, $name);
 
 while (defined $latlonargtail && $latlonargtail ne "") {
-    ($alatpts[$nturnpts], $alonpts[$nturnpts], $latlonargtail) = split /,/, $latlonargtail, 3;
-    $nturnpts = $nturnpts + 1;
+    if ($type eq "latlons") {
+        ($alatpts[$nturnpts], $alonpts[$nturnpts], $latlonargtail) = split /,/, $latlonargtail, 3;
+        $nturnpts = $nturnpts + 1;
+    }
+    else {
+        ($tp, $lat, $lon, $name,$latlonargtail) = split /,/, $latlonargtail, 5;
+        $atp[$nturnpts] = $tp;
+        $alatpts[$nturnpts] = $lat;
+        $alonpts[$nturnpts] = $lon;
+        $adesc[$nturnpts] = $name;
+        print "\nTP : $tp, lat : $lat  lon : $lon  name : $name   latlonargtail : $latlonargtail" ;
+        print "\nTP $nturnpts: $atp[$nturnpts] - $adesc[$nturnpts] ($alatpts[$nturnpts], $alonpts[$nturnpts]) \n";
+        $nturnpts++;
+    }
 }
 
 our $errorMsg = "";
@@ -206,13 +225,11 @@ $nleg = $nturnpts - 1;
 
 ### check for lat,lon pairs
 if (!defined $alonpts[$nleg] || $alonpts[$nleg] eq "") {
-    reportError("*** ERROR: Number of latitude and longitude points does not match.");
+    reportError("*** ERROR: Number of latitude and longitude points does not match.  Number nleg : $nleg");
     exit 0;
 }
 
 our $program = 'rasptrackavg';
-
-###### SET MACHINE-DEPENDENT PARAMS
 
 ## INITIALIZATION
 our %monthname = ('1', 'Jan', '2', 'Feb', '3', 'Mar', '4', 'Apr', '5', 'May', '6', 'Jun', '7', 'Jul', '8', 'Aug', '9', 'Sep', '10', 'Oct', '11', 'Nov', '12', 'Dec', '01', 'Jan', '02', 'Feb', '03', 'Mar', '04', 'Apr', '05', 'May', '06', 'Jun', '07', 'Jul', '08', 'Aug', '09', 'Sep');
@@ -223,9 +240,6 @@ our $HALFPI = 0.5 * $PI;
 our $DEG2RAD = $PI / 180.;
 our $warningfooter = '';
 my $titleline3;
-
-### GET POLAR,WGT DATA FROM SUBROUTINE
-&set_glider_data();
 
 ### SET REGION DEPENDENT PARAMS
 ### *NB* domain param arrays are _0_ index based
@@ -239,10 +253,6 @@ our ($NXmassMOAD, $NYmassMOAD);
 if (-r "$DATADIR/namelist.wps") {
     &read_region_params($DATADIR, ${REGION});
 }
-# Eric - GBSC RASP doesnt have wrfsi.nl file
-#elsif( -r "/var/www/html/${REGION}/wrfsi.nl"){
-#  &read_region_params( "/var/www/html/${REGION}/wrfsi.nl" );
-#}
 else {
     reportError("*** ERROR: No region data for $REGION : $DATADIR/namelist.wps");
     exit 0;
@@ -313,30 +323,33 @@ if ($LVALIDTIME == 1) {
     my $inputdatafile = "${DATADIR}/wstar.${VALIDTIME}local.${GRID}.data";
     #print "inputdatafile : $inputdatafile  \n";
     # @wstardata = &zmapxyplotread($inputdatafile);
-    ($errorMsg, @subData ) = &zmapxyplotread($inputdatafile);
+    ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
     if ($errorMsg != "") {
         reportError($errorMsg);
         exit 0;
-    } else {
+    }
+    else {
         @wstardata = @subData;
     }
     ### READ WIND DATA
     $inputdatafile = "${DATADIR}/blwindspd.${VALIDTIME}local.${GRID}.data";
-    #@blwindspddata = &zmapxyplotread($inputdatafile);
-    ($errorMsg, @subData ) = &zmapxyplotread($inputdatafile);
+    #@blwindspddata  = &zmapxyplotread($inputdatafile);
+    ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
     if ($errorMsg != "") {
         reportError($errorMsg);
         exit 0;
-    } else {
+    }
+    else {
         @blwindspddata = @subData;
     }
     $inputdatafile = "${DATADIR}/blwinddir.${VALIDTIME}local.${GRID}.data";
-    #@blwinddirdata = &zmapxyplotread($inputdatafile);
-    ($errorMsg, @subData ) = &zmapxyplotread($inputdatafile);
+    #@blwinddirdata  = &zmapxyplotread($inputdatafile);
+    ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
     if ($errorMsg != "") {
         reportError($errorMsg);
         exit 0;
-    } else {
+    }
+    else {
         @blwinddirdata = @subData;
     }
     #print ("wstardata : @wstardata \nblwindspddata : @blwindspddata \n blwinddirdata : @blwinddirdata");
@@ -394,13 +407,14 @@ else {
         exit 0;
     }
     ### READ ONE DATA FILE TO SET NNX,NNY
-    #@wstardata = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
-    ($errorMsg, @subData ) = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
+    #@wstardata  = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
+    ($errorMsg, @subData) = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
     if ($errorMsg != "") {
         reportError($errorMsg);
         exit 0;
-    } else {
-        @wstardata  = @subData;
+    }
+    else {
+        @wstardata = @subData;
     }
 }
 # Eric - removed archive day as GBSC RASP doesn't have archives
@@ -456,12 +470,13 @@ if ($LVALIDTIME == 0) {
             #print "zmapxyplotread on file: ${DATADIR}/${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data \n";
             #@{$posttimedata{$param}} = &zmapxyplotread($inputdatafile);
             $inputdatafile = "${DATADIR}/${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
-            ($errorMsg, @subData ) = &zmapxyplotread($inputdatafile);
+            ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg != "") {
                 reportError($errorMsg);
                 exit 0;
-            } else {
-                @{$posttimedata{$param}}  = @subData;
+            }
+            else {
+                @{$posttimedata{$param}} = @subData;
             }
 
 
@@ -476,12 +491,13 @@ if ($LVALIDTIME == 0) {
             #print "first zmapxyplotread on file: ${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data \n";
             #@{$posttimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data");
             $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data";
-            ($errorMsg, @subData ) = &zmapxyplotread($inputdatafile);
+            ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg != "") {
                 reportError($errorMsg);
                 exit 0;
-            } else {
-                @{$posttimedata{$param}}  = @subData;
+            }
+            else {
+                @{$posttimedata{$param}} = @subData;
             }
 
             $posthhmm{$param} = $filetimelist{$param}[$posttimeindex{$param}];
@@ -491,24 +507,26 @@ if ($LVALIDTIME == 0) {
         ### ELSE set pre/post arrays to time before/after $VALIDTIME
         else {
             ### FOR NON-ARCHIVE DATA
-           #@{$posttimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data");
+            #@{$posttimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data");
             $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
-            ($errorMsg, @subData ) = &zmapxyplotread($inputdatafile);
+            ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg != "") {
                 reportError($errorMsg);
                 exit 0;
-            } else {
-                @{$posttimedata{$param}}  = @subData;
+            }
+            else {
+                @{$posttimedata{$param}} = @subData;
             }
 
             #@{$pretimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} - 1 ]}local.${GRID}.data");
             my $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} - 1 ]}local.${GRID}.data";
-            ($errorMsg, @subData ) = &zmapxyplotread($inputdatafile);
+            ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg != "") {
                 reportError($errorMsg);
                 exit 0;
-            } else {
-                @{$pretimedata{$param}}  = @subData;
+            }
+            else {
+                @{$pretimedata{$param}} = @subData;
             }
 
             $posthhmm{$param} = $filetimelist{$param}[$posttimeindex{$param}];
@@ -523,16 +541,12 @@ if ($LVALIDTIME == 0) {
     if (defined $paramwarning1[0]) {$warningfooter .= sprintf "data unavailable before %s so assumed constant then\n", $filetimelist{$paramwarning1[0]}[$posttimeindex{$paramwarning1[0]}];}
 }
 
-### PARSE POLAR INFO - can be a,b,c or name
-### if name, get its polar data
-my $polarinfo;
-if (defined $polar_data{$polarinfoarg}) {$polarinfo = $polar_data{$polarinfoarg};}
-else {$polarinfo = $polarinfoarg;}
-### extract polar a,b,c from polardata string
+
+### extract polar a,b,c from $polarCoefficients string
 my ($apolar, $bpolar, $cpolar);
-if ($polarinfo =~ m|[0-9\+\-\.Ee]+,[0-9\+\-\.Ee]+,[0-9\+\-\.]+|) {($apolar, $bpolar, $cpolar) = split(/,/, $polarinfo);}
+if ($polarCoefficients =~ m|[0-9\+\-\.Ee]+,[0-9\+\-\.Ee]+,[0-9\+\-\.]+|) {($apolar, $bpolar, $cpolar) = split(/,/, $polarCoefficients);}
 else {
-    reportError("ERROR: Glider Polar for ${polarinfoarg} not available. Contact support at  flightservice\@soaringforecast.org to add your glider to the list");
+    reportError("ERROR: Invalid glider polar (a,b c) coefficients. Please contact support at  flightservice\@soaringforecast.org with this error");
     exit 0;
 }
 
@@ -580,22 +594,6 @@ for ($iturnpt = 0; $iturnpt <= $nleg; $iturnpt++) {
 my ($dummy, $revtrackdegtrue, $blwindspdmps, $blwinddirtrue, $windanglerad);
 my (@tailwindmps, @thermalpct);
 
-### COMPUTE WEIGHT RATIO ADJUSTMENT SO CAN TEST FOR MISSING DATA PRIOR TO PRINT
-### ADJUST FOR WEIGHT
-### for -1 use internal ballast info, else sqrt
-my $polarfactor;
-if ($wgtinfoarg <= 0) {
-    if (defined $weight_data{$polarinfoarg} && defined $ballast_data{$polarinfoarg}) {
-        ### 1 liter of water weighs 1 kg
-        $polarfactor = sqrt(1. + ($ballast_data{$polarinfoarg} / $weight_data{$polarinfoarg}));
-    }
-    else {
-        reportError('ERROR : Glider or ballast weight unavailable for ${polarinfoarg}');
-        exit 0;
-    }
-}
-else {$polarfactor = sqrt($wgtinfoarg);}
-
 ### PRINT HEADER
 my ($clockprt, $clockprt2, $clockstr, $clockdash, $clockpr2);
 ### ADD EXTRA COLUMN FOR MULTI-TIME TIME
@@ -625,9 +623,8 @@ my ($vloverd, $wloverd, $LoverD);
 $vloverd = sqrt($cpolar / $apolar);                                      # in km/hr
 $wloverd = $apolar * $vloverd * $vloverd + $bpolar * $vloverd + $cpolar; # negative, in m/s
 $LoverD = (-0.2777777777 * $vloverd) / $wloverd;                         # convert v to m/s and allow for negative w
-$flightSummary = $flightSummary . sprintf("%s PolarInfo: %s (L/D=%.0f)\\n", $clockpr2, $polarinfoarg, $LoverD);
-if ($wgtinfoarg == -1) {$flightSummary = $flightSummary . sprintf("${clockpr2} Ballast: %.0f kg   DryWeight: %.0f kg\\n", $ballast_data{$polarinfoarg}, $weight_data{$polarinfoarg});}
-else {$flightSummary = $flightSummary . sprintf("${clockpr2} WeightRatio: %s   DryWeight: %.0f kg\\n", $wgtinfoarg, $weight_data{$polarinfoarg});}
+$flightSummary = $flightSummary . sprintf("%s PolarInfo: %s (L/D=%.0f)\\n", $clockpr2, $gliderarg, $LoverD);
+$flightSummary = $flightSummary . sprintf("${clockpr2} Polar speed adjustment: %s  \\n",  $polarFactor);
 # printf "${clockpr2} ThermallingSinkrate: %s m/s\n", $thermallingsinkrate ;
 $flightSummary = $flightSummary . sprintf("${clockpr2} ThermallingSinkrate: %s kt\\n", $thermallingsinkrate * $mps2kt);
 if ($thermalmultiplier != 1) {$flightSummary = $flightSummary . sprintf("${clockpr2} ThermalStrengthMuliplier: %.1f \\n", $thermalmultiplier);}
@@ -652,7 +649,7 @@ $flightSummary = $flightSummary . " ${clockdash}--------------------------------
 $flightSummary = $flightSummary . " L ${clockprt}  -Spatial-Avg- ------Optimal-Flight-Avg------- \\n";
 $flightSummary = $flightSummary . " E ${clockstr}      Tail Clmb Tail Clmb      Gnd  Gnd Air Thm \\n";
 $flightSummary = $flightSummary . " G ${clockprt} Dist Wind Rate Wind Rate Time Spd  Spd Spd Pct \\n";
-$flightSummary = $flightSummary . "   ${clockprt}  km   kt  kt    kt   kt  min  kt km/h  kt   % \\n";
+$flightSummary = $flightSummary . "   ${clockprt}  km   kt   kt   kt   kt   min  kt km/h  kt  % \\n";
 
 
 ### START OF LOOP OVER ALL TURNPOINTS
@@ -731,9 +728,9 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
 
     ### CALC OPTIMAL SPEED
     ### DO POLAR WEIGHT RATIO WEIGHT ADJUSTMENT
-    my $anorm = $apolar / $polarfactor;
+    my $anorm = $apolar / $polarFactor;
     my $bnorm = $bpolar;
-    my $cnorm = $cpolar * $polarfactor;
+    my $cnorm = $cpolar * $polarFactor;
     my @optairspeed_inglide;
 
 
@@ -1070,7 +1067,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
     }
     ### TEST FOR ZERO LEG LENGTH - IF SO SKIP REST OF PROCESSING FOR THIS LEG
     if ($leglength == 0) {
-        $flightSummary = $flightSummary .print "** WARNING - ignored a leg with zero length (duplicate turnpoint?)\n";
+        $flightSummary = $flightSummary . print "** WARNING - ignored a leg with zero length (duplicate turnpoint?)\n";
         next LEG;
     }
     $totallength += $leglength;
@@ -1277,7 +1274,7 @@ sub zmapxyplotread() {
         $line = shift @FILE;
     }
     if (!defined $line || $line !~ /^---/) {
-        return ("*** $program ERROR: data file $inputfile MISSING DATA \n",());
+        return ("*** $program ERROR: data file $inputfile MISSING DATA \n", ());
     }
 
     ### READ HEADER LINES
@@ -1304,7 +1301,7 @@ sub zmapxyplotread() {
         @data = split /  */, $line;
         push @a, @data;
     }
-    return ("",@a);
+    return ("", @a);
 }
 
 #########################################################################
