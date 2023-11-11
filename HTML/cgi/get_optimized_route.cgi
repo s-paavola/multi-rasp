@@ -66,7 +66,7 @@ if (defined $region && $region =~ m|^([A-Za-z0-9][A-Za-z0-9_.+-]*)$|) {$region =
 if (defined $grid && $grid =~ m|^([dw][0-9])$|i) {$grid = $1;}
 if (defined $date && $date =~ m|^([0-9-]+)$|) {$date = $1;}
 if (defined $model && $model =~ m|^(\w+)$|) {$model = $1;}
-if (defined $validtime && $validtime =~ m|^([0-9]{4}x?)$|) {$validtime = $1;}
+if (defined $validtime && $validtime =~ m|^([0-9]{4}x?)$|) {$validtime = $1;} # Perl doesn't like + so switched to x
 if (defined $glider && $glider =~ m|^([A-Za-z0-9 \/\-\(\)\\\*\.]*)$|) {$glider = $1;} # Eric - was polar
 if (defined $polarFactor && $polarFactor =~ m|^([0-9.-]*)$|) {$polarFactor = $1;}
 if (defined $polarCoefficients && $polarCoefficients =~ m|^([0-9\+\-\.Ee]+,[0-9\+\-\.Ee]+,[0-9\+\-\.]+)$|) {$polarCoefficients = $1;}
@@ -82,12 +82,12 @@ if (!defined $tsink || $tsink eq '') {$tsink = '1.0';}
 if (!defined $tmult || $tmult eq '') {$tmult = '1';}
 
 #### TEST FOR MISSING ARGUMENTS
-if (!defined $region || $region eq '') {die "${PROGRAM} ERROR EXIT: missing region argument";}
-if (!defined $grid || $grid eq '') {die "${PROGRAM} ERROR EXIT: missing grid argument";}
-if (!defined $validtime || $validtime eq '') {die "${PROGRAM} ERROR EXIT: missing time argument";}
-if (!defined $date || $date eq '') {die "${PROGRAM} ERROR EXIT: missing date argument";}
-if (!defined $model || $model eq '') {die "${PROGRAM} ERROR EXIT: missing model argument";}
-if (!defined $glider || $glider eq '') {die "${PROGRAM} ERROR EXIT: missing polar argument";}
+if (!defined $region || $region eq '') {reportError("ERROR EXIT: missing region argument");exit 0;}
+if (!defined $grid || $grid eq '') {reportError( "ERROR EXIT: missing grid argument");exit 0;}
+if (!defined $validtime || $validtime eq '') {reportError( "ERROR EXIT: missing time argument");exit 0;}
+if (!defined $date || $date eq '') {reportError( "ERROR EXIT: missing date argument");exit 0;}
+if (!defined $model || $model eq '') {reportError( "ERROR EXIT: missing model argument");exit 0;}
+if (!defined $glider || $glider eq '') {reportError( "ERROR EXIT: missing polar argument");exit 0;}
 ### TEST FOR LATLONS, XYLIST OR TURNPTS INPUT ALTERNATIVES
 ### TEST FOR LATLONS, XYLIST OR TURNPTS INPUT ALTERNATIVES
 if ((!defined $latlons || $latlons eq '') &&
@@ -115,4 +115,12 @@ my @args = ($dataDir, $region, $grid, $validtime, $glider, $polarFactor, $polarC
 system($EXTRACTSCRIPT, @args);
 
 #print "Finished get_optimized_route.cgi";
-print $routeData;
+#print $routeData;
+
+
+sub reportError {
+    my ($errorMsg) = $_[0];
+    my $errorJson = "{ \"error\" : \"$errorMsg\" }";
+    print $errorJson;
+
+}

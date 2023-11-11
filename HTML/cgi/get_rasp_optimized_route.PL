@@ -14,49 +14,50 @@
 ##### PAULS - 2008-08-03 Can't have -T flag to perl. Opening a file for writing is not allowed - see "man perlsec"
 
 # Eric - Debugging
-my $total = $#ARGV;
-print "Number of arguments (0 based): $total \n";
-my $counter = 0;
-foreach my $a (@ARGV) {
-    print "Arg # $counter : $a\n";
-    $counter++;
-}
+#my $total = $#ARGV;
+#print "Number of arguments (0 based): $total \n";
+#my $counter = 0;
+#foreach my $a (@ARGV) {
+#    print "Arg # $counter : $a\n";
+#    $counter++;
+#}
 #End debugging
 
     # Input argument order
-    # 0 Root directory
+    # 0 Root directory  (includes date and model in path)
     # 1 Region
-    # 2 Namelist.wps directory  eg "9x3km"
-    # 3 Date YYYY-MM-DD format
-    # 4 Forecast model (gfs, nam, ...)
-    # 5 Grid   e.g. d2
-    # 6 Time  0 or specific hour (e.g. 1000)
-    # 7 Glider type (e.g. LS-4a) - used just for reference
-    # 8 Weight Info
-    # 9 default Thermal sink rate in m/s
-    # 10 Thermal multiplier (???)
-    # 11 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
+    # 2 Grid   e.g. d2
+    # 3 Time  0 or specific hour (e.g. 1000)
+    # 4 Glider type (e.g. LS-4a) - used just for reference
+    # 5 Polar adjustment -
+    # 6 Polar coefficients (a,b,c)
+    # 7 default Thermal sink rate in m/s
+    # 8 Thermal multiplier (???)
+    # 9 Type - indicate format of following turnpoint list - either 'latlons' or 'turnpts'
+    # 10 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
     #     or "1,42.42617,-71.79383,Sterling,2,42.805,-72.003,Jaffrey,..."
-
-    my $summaryJson = "";
-if ($#ARGV < 8) {
-    #expect at least 9 arguments:
-    #-----------------adescription1------------------------------------
+my $summaryJson;
+$summaryJson = "";
+if ($#ARGV < 10) {
+    # $#ARGV is 0 based so really looking for 11 arguments
+    #-----------------description------------------------------------
     $summaryJson = $summaryJson . "{ \"error\" : \"Calc+Output optimal time along path based on \\\"speed to fly\\\" eqns.";
-    $summaryJson = $summaryJson . "\\n\\t1 = Data directory";
-    $summaryJson = $summaryJson . "\\n\\t2 = Region";
-    $summaryJson = $summaryJson . "\\n\\t3 = Grid";
-    $summaryJson = $summaryJson . "\\n\\t4 = Time eg. 1300 (use single forecast) or 1100+ (start task at 1100)";
-    $summaryJson = $summaryJson . "\\n\\t5 = PolarInfo";
-    $summaryJson = $summaryJson . "\\n\\t6 = WgtInfo ";
+    $summaryJson = $summaryJson . "\\n\\t0 = Data directory";
+    $summaryJson = $summaryJson . "\\n\\t1 = Region";
+    $summaryJson = $summaryJson . "\\n\\t2 = Grid";
+    $summaryJson = $summaryJson . "\\n\\t3 = Time eg. 1300 (use single forecast) or 1100x (start task at 1100)";
+    $summaryJson = $summaryJson . "\\n\\t4 = Glider name";
+    $summaryJson = $summaryJson . "\\n\\t5 = Polar factor (% above below weight used when generating polar info ";
+    $summaryJson = $summaryJson . "\\n\\t6 = Polar coefficients (a,b,c)";
     $summaryJson = $summaryJson . "\\n\\t7 = ThermallingSinkrate(m/s)";
     $summaryJson = $summaryJson . "\\n\\t8 = ThermalMultiplier";
-    $summaryJson = $summaryJson . "\\n\\t9 = Turnpt . Lat, Lon . pairs \\n ";
-    $summaryJson = $summaryJson . " Input: Day=-yyyy-mm-dd  Valid.Time=hhmm[+]  ThermalingSink=m/sec Lat / Lon = degrees(Wlon = -)\\n ";
-    $summaryJson = $summaryJson . "ValidTime \\\"hhmm\\\" => single datafile time (lst)  \\\"hhmm+\\\" => flight start time (lst) \\n";
-    $summaryJson = $summaryJson . " Output: std out \\n";
-    $summaryJson = $summaryJson . " eg:  NewEngland/2023-08-11/gfs  NewEngland d2  1000 LS-4a 1 1 1 42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383 1234\\n";
-    $summaryJson = $summaryJson . "Reminder: This routine requires american unit data file input = do not use for metric data files \\n\"}";
+    $summaryJson = $summaryJson . "\\n\\t9 = Turnpoint formats - \\\"latlons\\\"  or \\\"turnpts\\\"  used to indicate format of turnpoints below. ";
+    $summaryJson = $summaryJson . "\\n\\t10 = If type  \\\"latlons\\\"  format is: Lat,Lon  pairs , if  \\\"turnpts\\\" then  #(1,2,3), lat, lon, turnpoint name ";
+    $summaryJson = $summaryJson . " \\nInput: Day=-yyyy-mm-dd  Valid.Time=hhmm[x]  ThermalingSink=m/sec Lat / Lon = degrees(Wlon = -) ";
+    $summaryJson = $summaryJson . "\\nValidTime \\\"hhmm\\\" => single datafile time (lst)  \\\"hhmm+\\\" => flight start time (lst) ";
+    $summaryJson = $summaryJson . " \\nOutput: std out  ";
+    $summaryJson = $summaryJson . "\\n eg:  NewEngland/2023-08-11/gfs  NewEngland d2  1000 LS-4a 1.0 \\\"-0.0002,0.0350,-2.1900\\\"1 1 1 latlons \\\"42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383\\\"  ";
+    $summaryJson = $summaryJson . "\\nReminder: This routine requires american unit data file input = do not use for metric data files \\n\"}";
     print $summaryJson;
     exit 0;
 }
@@ -153,7 +154,7 @@ our ($REGION);
 #use Data::Dumper;
 #print Dumper(\@_);
 
-my ($gliderarg, $polarFactor, $polarCoefficients , $thermallingsinkrate, $thermalmultiplier, $latlonarg);
+my ($glider, $polarFactor, $polarCoefficients , $thermallingsinkrate, $thermalmultiplier,  $type, $taskpoints );
 ###### PARSE ARGUMENTS
 # Eric - updated
 $DATADIR = $ARGV[0];
@@ -173,7 +174,7 @@ if ($VALIDTIME =~ m|x$|) {
 }
 else {$LVALIDTIME = 1;}
 
-$gliderarg = $ARGV[4];    # Eric - switch to gliderarg as removed polar file
+$glider = $ARGV[4];    # Eric - switch to gliderarg as removed polar file
 
 $polarFactor = $ARGV[5];   # adjustment to polar based on 'real' glider weight (empty + pilot + ballast) vs weight polar was calculated at
 
@@ -185,7 +186,7 @@ else {$thermallingsinkrate = $ARGV[7];}
 
 $thermalmultiplier = $ARGV[8];
 
-$type = $ARG[9];        # indicate if next parm is in latlon or turnpt format
+$type = $ARGV[9];        # indicate if next parm is in latlon or turnpt format
 $taskpoints = $ARGV[10]; # Task turnpoints in LAT,LON
 
 #print "\ntype : $ARGV[8]";
@@ -209,8 +210,8 @@ while (defined $latlonargtail && $latlonargtail ne "") {
         $alatpts[$nturnpts] = $lat;
         $alonpts[$nturnpts] = $lon;
         $adesc[$nturnpts] = $name;
-        print "\nTP : $tp, lat : $lat  lon : $lon  name : $name   latlonargtail : $latlonargtail" ;
-        print "\nTP $nturnpts: $atp[$nturnpts] - $adesc[$nturnpts] ($alatpts[$nturnpts], $alonpts[$nturnpts]) \n";
+       # print "\nTP : $tp, lat : $lat  lon : $lon  name : $name   latlonargtail : $latlonargtail" ;
+       # print "\nTP $nturnpts: $atp[$nturnpts] - $adesc[$nturnpts] ($alatpts[$nturnpts], $alonpts[$nturnpts]) \n";
         $nturnpts++;
     }
 }
@@ -409,7 +410,7 @@ else {
     ### READ ONE DATA FILE TO SET NNX,NNY
     #@wstardata  = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
     ($errorMsg, @subData) = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
-    if ($errorMsg != "") {
+    if ($errorMsg ne "") {
         reportError($errorMsg);
         exit 0;
     }
@@ -471,7 +472,7 @@ if ($LVALIDTIME == 0) {
             #@{$posttimedata{$param}} = &zmapxyplotread($inputdatafile);
             $inputdatafile = "${DATADIR}/${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
-            if ($errorMsg != "") {
+            if ($errorMsg ne "") {
                 reportError($errorMsg);
                 exit 0;
             }
@@ -492,7 +493,7 @@ if ($LVALIDTIME == 0) {
             #@{$posttimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data");
             $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
-            if ($errorMsg != "") {
+            if ($errorMsg ne "") {
                 reportError($errorMsg);
                 exit 0;
             }
@@ -510,7 +511,7 @@ if ($LVALIDTIME == 0) {
             #@{$posttimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data");
             $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
-            if ($errorMsg != "") {
+            if ($errorMsg ne "") {
                 reportError($errorMsg);
                 exit 0;
             }
@@ -521,7 +522,7 @@ if ($LVALIDTIME == 0) {
             #@{$pretimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} - 1 ]}local.${GRID}.data");
             my $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} - 1 ]}local.${GRID}.data";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
-            if ($errorMsg != "") {
+            if ($errorMsg ne "") {
                 reportError($errorMsg);
                 exit 0;
             }
@@ -623,7 +624,7 @@ my ($vloverd, $wloverd, $LoverD);
 $vloverd = sqrt($cpolar / $apolar);                                      # in km/hr
 $wloverd = $apolar * $vloverd * $vloverd + $bpolar * $vloverd + $cpolar; # negative, in m/s
 $LoverD = (-0.2777777777 * $vloverd) / $wloverd;                         # convert v to m/s and allow for negative w
-$flightSummary = $flightSummary . sprintf("%s PolarInfo: %s (L/D=%.0f)\\n", $clockpr2, $gliderarg, $LoverD);
+$flightSummary = $flightSummary . sprintf("%s PolarInfo: %s (L/D=%.0f)\\n", $clockpr2, $glider, $LoverD);
 $flightSummary = $flightSummary . sprintf("${clockpr2} Polar speed adjustment: %s  \\n",  $polarFactor);
 # printf "${clockpr2} ThermallingSinkrate: %s m/s\n", $thermallingsinkrate ;
 $flightSummary = $flightSummary . sprintf("${clockpr2} ThermallingSinkrate: %s kt\\n", $thermallingsinkrate * $mps2kt);
@@ -1134,7 +1135,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
 
 } ### END OF LOOP OVER ALL TURNPOINTS
 
-### WRITE FINAL PT VALUES TO FILE
+### Create JSON output
 push(@xgridpoints, $xsort[$nlegpts - 1]);
 push(@ygridpoints, $ysort[$nlegpts - 1]);
 #print " final xgridpoints  :  $xgridpoints[$#xgridpoints]";
