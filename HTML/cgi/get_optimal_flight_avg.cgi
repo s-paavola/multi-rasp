@@ -3,8 +3,7 @@
 ### CALC RASP BLIPMAP TRACK AVG, SPATIAL AND OPTIMAL FLIGHT
 ### Eric - Modified from original get_rasptrackavg for GBSC RASP  - return JSON containing route
 ###
-### Call https:/wwww.soargbsc.net/RASP/get_rasptrackavg_gbsc?region=NewEngland&grid=d2&date=2023-08-11&time=1100+&polar=LS-4a&pctDeltaRefWgt=1&$polarCoefficients=-0.0002,0.035,-2.19&sink=1&tmult=1&latlons=42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383
-###
+### curl 'http://192.168.1.6/cgi/get_optimal_flight_avg.cgi?region=NewEngland&date=2023-08-11&model=gfs&grid=d2&time=1300&glider=206%20Hornet&polarFactor=1.0&polarCoefficients=-0.0002%2C0.0244%2C-1.4700&tsink=1.0&tmult=1.0&turnpts=1%2C42.42616666666667%2C-71.7938333333333%2CSter%2C2%2C42.805%2C-72.00283333333333%2CJaff%2C3%2C42.100833333333334%2C-72.03883333333333%2CSout%2C4%2C42.42616666666667%2C-71.79383333333332%2CSter'
 ################################################################################
 #print "Content-type: text/html\n\n${headerline}";
 print "Content-type:application/json \n\n";
@@ -25,7 +24,7 @@ my $rasp_basedir;
 if ($SCRIPTDIR =~ m|^((/[\w][\w.-]*)+)/([\w.-]+)$|) {$rasp_basedir = $1;}
 
 ### Program that executes summary and outputs JSON
-my $EXTRACTSCRIPT = "$SCRIPTDIR/get_rasp_optimized_route.PL";
+my $EXTRACTSCRIPT = "$SCRIPTDIR/get_optimal_flight_avg.PL";
 
 #print "rasp_basedir : $rasp_basedir";
 
@@ -53,7 +52,8 @@ $glider = $query->param('glider'); # was polar but renamed to glider (e.g. LS-4a
 $polarFactor = $query->param('polarFactor');
 $polarCoefficients = $query->param('polarCoefficients');
 $tsink = $query->param('tsink');
-$tmult = $query->param('tmult');
+$tmult = $query->param('tmult'); # Per emails with Dr Jack, this can be used as fudge factor to adjust
+# sink rate calc up/down, if you believe thermal strength (wstar) are over/under forecast.
 $latlons = $query->param('latlons');
 $turnpts = $query->param('turnpts');
 
@@ -111,10 +111,10 @@ if (defined $turnpts) {
 }
 
 my @args = ($dataDir, $region, $grid, $validtime, $glider, $polarFactor, $polarCoefficients, $tsink, $tmult, $type, $latlons);
-#$routeData = `$SCRIPTDIR/get_rasp_optimized_route.PL  $dataDir $region  $grid $validtime  $glider  $polarFactor $polarCoefficients  $tsink  $tmult  $type $latlons`;
+#$routeData = `$SCRIPTDIR/get_optimal_flight_avg.PL  $dataDir $region  $grid $validtime  $glider  $polarFactor $polarCoefficients  $tsink  $tmult  $type $latlons`;
 system($EXTRACTSCRIPT, @args);
 
-#print "Finished get_optimized_route.cgi";
+#print "Finished get_optimal_flight_avg.cgi";
 #print $routeData;
 
 

@@ -7,7 +7,7 @@
 #        3. Returning JSON
 #
 # Example call:
-#   perl get_rasp_optimized_route.PL  ../NewEngland/2023-08-11/gfs NewEngland  d2 1000x  "LS-4a" 1 1 1 "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
+#   perl get_optimal_flight_avg.PL  ../NewEngland/2023-08-11/gfs NewEngland  d2 1000x  "LS-4a" 1 1 1 "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
 
 ##### PAULS - 2017-10-16 BLOCKED if optgroundspd < 0.05 mps (= 0.1 Knot)  [Was <= 0.0] See line 940
 ##### PAULS - 2008-08-02 Warnings turned off at lines 900 1025 1039 & 1062 to avoid cluttering logs with errors from sqrt(-ve num) #####
@@ -23,41 +23,41 @@
 #}
 #End debugging
 
-    # Input argument order
-    # 0 Root directory  (includes date and model in path)
-    # 1 Region
-    # 2 Grid   e.g. d2
-    # 3 Time  0 or specific hour (e.g. 1000)
-    # 4 Glider type (e.g. LS-4a) - used just for reference
-    # 5 Polar adjustment -
-    # 6 Polar coefficients (a,b,c)
-    # 7 default Thermal sink rate in m/s
-    # 8 Thermal multiplier (???)
-    # 9 Type - indicate format of following turnpoint list - either 'latlons' or 'turnpts'
-    # 10 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
-    #     or "1,42.42617,-71.79383,Sterling,2,42.805,-72.003,Jaffrey,..."
+# Input argument order
+# 0 Root directory  (includes date and model in path)
+# 1 Region
+# 2 Grid   e.g. d2
+# 3 Time  0 or specific hour (e.g. 1000)
+# 4 Glider type (e.g. LS-4a) - used just for reference
+# 5 Polar adjustment -
+# 6 Polar coefficients (a,b,c)
+# 7 default Thermal sink rate in m/s
+# 8 Thermal multiplier (???)
+# 9 Type - indicate format of following turnpoint list - either 'latlons' or 'turnpts'
+# 10 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
+#     or "1,42.42617,-71.79383,Sterling,2,42.805,-72.003,Jaffrey,..."
 my $summaryJson;
 $summaryJson = "";
 if ($#ARGV < 10) {
     # $#ARGV is 0 based so really looking for 11 arguments
     #-----------------description------------------------------------
-    $summaryJson = $summaryJson . "{ \"error\" : \"Calc+Output optimal time along path based on \\\"speed to fly\\\" eqns.";
-    $summaryJson = $summaryJson . "\\n\\t0 = Data directory";
-    $summaryJson = $summaryJson . "\\n\\t1 = Region";
-    $summaryJson = $summaryJson . "\\n\\t2 = Grid";
-    $summaryJson = $summaryJson . "\\n\\t3 = Time eg. 1300 (use single forecast) or 1100x (start task at 1100)";
-    $summaryJson = $summaryJson . "\\n\\t4 = Glider name";
-    $summaryJson = $summaryJson . "\\n\\t5 = Polar factor (% above below weight used when generating polar info ";
-    $summaryJson = $summaryJson . "\\n\\t6 = Polar coefficients (a,b,c)";
-    $summaryJson = $summaryJson . "\\n\\t7 = ThermallingSinkrate(m/s)";
-    $summaryJson = $summaryJson . "\\n\\t8 = ThermalMultiplier";
-    $summaryJson = $summaryJson . "\\n\\t9 = Turnpoint formats - \\\"latlons\\\"  or \\\"turnpts\\\"  used to indicate format of turnpoints below. ";
-    $summaryJson = $summaryJson . "\\n\\t10 = If type  \\\"latlons\\\"  format is: Lat,Lon  pairs , if  \\\"turnpts\\\" then  #(1,2,3), lat, lon, turnpoint name ";
-    $summaryJson = $summaryJson . " \\nInput: Day=-yyyy-mm-dd  Valid.Time=hhmm[x]  ThermalingSink=m/sec Lat / Lon = degrees(Wlon = -) ";
-    $summaryJson = $summaryJson . "\\nValidTime \\\"hhmm\\\" => single datafile time (lst)  \\\"hhmm+\\\" => flight start time (lst) ";
-    $summaryJson = $summaryJson . " \\nOutput: std out  ";
-    $summaryJson = $summaryJson . "\\n eg:  NewEngland/2023-08-11/gfs  NewEngland d2  1000 LS-4a 1.0 \\\"-0.0002,0.0350,-2.1900\\\"1 1 1 latlons \\\"42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383\\\"  ";
-    $summaryJson = $summaryJson . "\\nReminder: This routine requires american unit data file input = do not use for metric data files \\n\"}";
+    $summaryJson .= "{ \"error\" : \"Calc+Output optimal time along path based on \\\"speed to fly\\\" eqns.";
+    $summaryJson .= "\\n\\t0 = Data directory";
+    $summaryJson .= "\\n\\t1 = Region";
+    $summaryJson .= "\\n\\t2 = Grid";
+    $summaryJson .= "\\n\\t3 = Time eg. 1300 (use single forecast) or 1100x (start task at 1100)";
+    $summaryJson .= "\\n\\t4 = Glider name";
+    $summaryJson .= "\\n\\t5 = Polar factor (% above below weight used when generating polar info ";
+    $summaryJson .= "\\n\\t6 = Polar coefficients (a,b,c)";
+    $summaryJson .= "\\n\\t7 = ThermallingSinkrate(m/s)";
+    $summaryJson .= "\\n\\t8 = ThermalMultiplier";
+    $summaryJson .= "\\n\\t9 = Turnpoint formats - \\\"latlons\\\"  or \\\"turnpts\\\"  used to indicate format of turnpoints below. ";
+    $summaryJson .= "\\n\\t10 = If type  \\\"latlons\\\"  format is: Lat,Lon  pairs , if  \\\"turnpts\\\" then  #(1,2,3), lat, lon, turnpoint name ";
+    $summaryJson .= " \\nInput: Day=-yyyy-mm-dd  Valid.Time=hhmm[x]  ThermalingSink=m/sec Lat / Lon = degrees(Wlon = -) ";
+    $summaryJson .= "\\nValidTime \\\"hhmm\\\" => single datafile time (lst)  \\\"hhmm+\\\" => flight start time (lst) ";
+    $summaryJson .= " \\nOutput: std out  ";
+    $summaryJson .= "\\n eg:  NewEngland/2023-08-11/gfs  NewEngland d2  1000 LS-4a 1.0 \\\"-0.0002,0.0350,-2.1900\\\"1 1 1 latlons \\\"42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383\\\"  ";
+    $summaryJson .= "\\nReminder: This routine requires american unit data file input = do not use for metric data files \\n\"}";
     print $summaryJson;
     exit 0;
 }
@@ -144,7 +144,6 @@ my $mps2fpm = 196.850;
 my $mps2kt = 1.943849;
 my $kmphr2mps = 0.277778;
 
-
 require "./ij2latlon_gbsc.PL";
 require "./keyValuesToJson.PL";
 
@@ -154,7 +153,7 @@ our ($REGION);
 #use Data::Dumper;
 #print Dumper(\@_);
 
-my ($glider, $polarFactor, $polarCoefficients , $thermallingsinkrate, $thermalmultiplier,  $type, $taskpoints );
+my ($glider, $polarFactor, $polarCoefficients, $thermallingsinkrate, $thermalmultiplier, $type, $taskpoints);
 ###### PARSE ARGUMENTS
 # Eric - updated
 $DATADIR = $ARGV[0];
@@ -174,11 +173,11 @@ if ($VALIDTIME =~ m|x$|) {
 }
 else {$LVALIDTIME = 1;}
 
-$glider = $ARGV[4];    # Eric - switch to gliderarg as removed polar file
+$glider = $ARGV[4]; # Eric - switch to gliderarg as removed polar file
 
-$polarFactor = $ARGV[5];   # adjustment to polar based on 'real' glider weight (empty + pilot + ballast) vs weight polar was calculated at
+$polarFactor = $ARGV[5]; # adjustment to polar based on 'real' glider weight (empty + pilot + ballast) vs weight polar was calculated at
 
-$polarCoefficients = $ARGV[6];   # a,b,c coefficients to calc glider polar
+$polarCoefficients = $ARGV[6]; # a,b,c coefficients to calc glider polar
 
 if ($ARGV[7] =~ m|^([0-9.]+)*kt[s]*$|i)    # default ThermallingSinkrate input units = m/s
 {$thermallingsinkrate = ${1} / ${mps2kt};} #  append kt/kts to change units
@@ -205,13 +204,13 @@ while (defined $latlonargtail && $latlonargtail ne "") {
         $nturnpts = $nturnpts + 1;
     }
     else {
-        ($tp, $lat, $lon, $name,$latlonargtail) = split /,/, $latlonargtail, 5;
+        ($tp, $lat, $lon, $name, $latlonargtail) = split /,/, $latlonargtail, 5;
         $atp[$nturnpts] = $tp;
         $alatpts[$nturnpts] = $lat;
         $alonpts[$nturnpts] = $lon;
         $adesc[$nturnpts] = $name;
-       # print "\nTP : $tp, lat : $lat  lon : $lon  name : $name   latlonargtail : $latlonargtail" ;
-       # print "\nTP $nturnpts: $atp[$nturnpts] - $adesc[$nturnpts] ($alatpts[$nturnpts], $alonpts[$nturnpts]) \n";
+        # print "\nTP : $tp, lat : $lat  lon : $lon  name : $name   latlonargtail : $latlonargtail" ;
+        # print "\nTP $nturnpts: $atp[$nturnpts] - $adesc[$nturnpts] ($alatpts[$nturnpts], $alonpts[$nturnpts]) \n";
         $nturnpts++;
     }
 }
@@ -220,9 +219,6 @@ our $errorMsg = "";
 our @subData = ();
 
 $nleg = $nturnpts - 1;
-#4test: print "NLEG= $nleg \n";
-#4test: for( $ileg=0; $ileg<=$nleg; $ileg++ )
-#4test: { print "$ileg = $alatpts[$ileg] & $alonpts[$ileg] = \n"; }
 
 ### check for lat,lon pairs
 if (!defined $alonpts[$nleg] || $alonpts[$nleg] eq "") {
@@ -303,6 +299,8 @@ my ($wstardata, $blwindspddata, $blwinddirdata) = (), (), ();
 my %filetimelist;
 my %lslist;
 
+my ($validdayprt, $gooddate);
+
 # Eric GBSC RASP uses explicit dates in directory names
 # Removed  unneeded date logic
 
@@ -312,6 +310,14 @@ if ($LVALIDTIME == 1) {
     ### TEST FOR AVAILABLE DATA
     my $checkfile = "${DATADIR}/wstar.${VALIDTIME}local.${GRID}.data";
     if ($checkfile =~ m|^(\.\./)?[A-Za-z]+/[0-9]{4}-[0-9]{2}-[0-9]{2}/([a-z0-9]+(\.[a-z0-9]+)+)$|) {$checkfile = $1;}
+
+    my $dateline = `grep 'Day=' "${DATADIR}/wstar.${VALIDTIME}local.${GRID}.data" 2>&1`;
+    if ($dateline =~ m|Day= ([^= ]+)  *([^= ]+)  *([^= ]+)  *([^= ]+) |) {
+        $validdayprt = "$4 $3 $monthname{$2} $1";
+        $gooddate = "Day= $1 $2 $3";
+    }
+
+
     #print "checkfile : $checkfile \n";
     my $filetest = `grep '^ *---' $checkfile 2>&1`;
     if ($filetest !~ m|---|) {
@@ -323,7 +329,6 @@ if ($LVALIDTIME == 1) {
     ### READ W* DATA
     my $inputdatafile = "${DATADIR}/wstar.${VALIDTIME}local.${GRID}.data";
     #print "inputdatafile : $inputdatafile  \n";
-    # @wstardata = &zmapxyplotread($inputdatafile);
     ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
     if ($errorMsg != "") {
         reportError($errorMsg);
@@ -334,7 +339,7 @@ if ($LVALIDTIME == 1) {
     }
     ### READ WIND DATA
     $inputdatafile = "${DATADIR}/blwindspd.${VALIDTIME}local.${GRID}.data";
-    #@blwindspddata  = &zmapxyplotread($inputdatafile);
+    #print "inputdatafile : $inputdatafile  \n";
     ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
     if ($errorMsg != "") {
         reportError($errorMsg);
@@ -344,7 +349,7 @@ if ($LVALIDTIME == 1) {
         @blwindspddata = @subData;
     }
     $inputdatafile = "${DATADIR}/blwinddir.${VALIDTIME}local.${GRID}.data";
-    #@blwinddirdata  = &zmapxyplotread($inputdatafile);
+    #print "inputdatafile : $inputdatafile  \n";
     ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
     if ($errorMsg != "") {
         reportError($errorMsg);
@@ -408,7 +413,7 @@ else {
         exit 0;
     }
     ### READ ONE DATA FILE TO SET NNX,NNY
-    #@wstardata  = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
+    #@wstardata     = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
     ($errorMsg, @subData) = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
     if ($errorMsg ne "") {
         reportError($errorMsg);
@@ -468,12 +473,11 @@ if ($LVALIDTIME == 0) {
             $posttimeindex{$param} = $#{$lslist{$param}};
             ### get new data
             ### FOR NON-ARCHIVE DATA
-            #print "zmapxyplotread on file: ${DATADIR}/${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data \n";
-            #@{$posttimedata{$param}} = &zmapxyplotread($inputdatafile);
-            $inputdatafile = "${DATADIR}/${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
+            $inputdatafile = "${DATADIR}/$param.${filetimelist {$param} [ $posttimeindex{$param} ]}local.${GRID}.data";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg ne "") {
                 reportError($errorMsg);
+
                 exit 0;
             }
             else {
@@ -489,8 +493,6 @@ if ($LVALIDTIME == 0) {
         ### IF FIRST, write warning
         elsif ($posttimeindex{$param} == 0) {
             ### NON-ARCHIVE DATA
-            #print "first zmapxyplotread on file: ${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data \n";
-            #@{$posttimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data");
             $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ 0 ]}local.${GRID}.data";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg ne "") {
@@ -508,8 +510,8 @@ if ($LVALIDTIME == 0) {
         ### ELSE set pre/post arrays to time before/after $VALIDTIME
         else {
             ### FOR NON-ARCHIVE DATA
-            #@{$posttimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data");
             $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
+            #print "inputdatafile : $inputdatafile  \n";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg ne "") {
                 reportError($errorMsg);
@@ -521,6 +523,7 @@ if ($LVALIDTIME == 0) {
 
             #@{$pretimedata{$param}} = &zmapxyplotread("${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} - 1 ]}local.${GRID}.data");
             my $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} - 1 ]}local.${GRID}.data";
+            #print "inputdatafile : $inputdatafile  \n";
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg ne "") {
                 reportError($errorMsg);
@@ -538,8 +541,8 @@ if ($LVALIDTIME == 0) {
         $posttimesec{$param} = 3600. * substr($posthhmm{$param}, 0, 2) + 60. * substr($posthhmm{$param}, 2, 2);
     }
     ### note: arrays @paramwarning0,1 give parameters missing, but currently not printed
-    if ($#paramwarning0 > -1) {$warningfooter .= sprintf "data unavailable after %s so assumed constant then\n", $VALIDTIME;}
-    if (defined $paramwarning1[0]) {$warningfooter .= sprintf "data unavailable before %s so assumed constant then\n", $filetimelist{$paramwarning1[0]}[$posttimeindex{$paramwarning1[0]}];}
+    if ($#paramwarning0 > -1) {$warningfooter .= sprintf "Data unavailable after %s so assumed constant conditions after that time.", $VALIDTIME;}
+    if (defined $paramwarning1[0]) {$warningfooter .= sprintf "Data unavailable before %s so assumed constant at that time.", $filetimelist{$paramwarning1[0]}[$posttimeindex{$paramwarning1[0]}];}
 }
 
 
@@ -595,63 +598,57 @@ for ($iturnpt = 0; $iturnpt <= $nleg; $iturnpt++) {
 my ($dummy, $revtrackdegtrue, $blwindspdmps, $blwinddirtrue, $windanglerad);
 my (@tailwindmps, @thermalpct);
 
-### PRINT HEADER
+### Create summary header JSON
 my ($clockprt, $clockprt2, $clockstr, $clockdash, $clockpr2);
-### ADD EXTRA COLUMN FOR MULTI-TIME TIME
-if ($LVALIDTIME == 0) {
-    $clockprt = '          ';
-    $clockpr2 = '    ';
-    $clockstr = ' ClockTime';
-    $clockdash = '---------';
-}
-else {$clockprt = $clockpr2 = $clockstr = $clockdash = '';}
 
-my $flightSummary = "";
-# Note double escape for newline and quotes as text will be going out in JSON
-$flightSummary = $flightSummary . "${clockpr2}            FLIGHT TRACK AVERAGES             \\n";
-$flightSummary = $flightSummary . " ${clockdash}-------------------------------------------- \\n";
-$flightSummary = $flightSummary . "${clockpr2} (\\\"optimal\\\" uses wind-adjusted speed-to-fly)\\n";
-if ($LVALIDTIME == 0) {
-    $flightSummary = $flightSummary . "${clockpr2} Valid: $validdayprt  StartTime: ${VALIDTIME}local\\n";
-}
-else {
-    $flightSummary = $flightSummary . "${clockpr2} Valid: $validdayprt  ${VALIDTIME}lst\\n";
-}
-$flightSummary = $flightSummary . "${clockpr2} Region: $REGION\\n";
-
-### CALC NO-WIND L/D FOR PRINTOUT
+## CALC NO-WIND L/D FOR PRINTOUT (Eric - See Reichmann pg 123)
 my ($vloverd, $wloverd, $LoverD);
-$vloverd = sqrt($cpolar / $apolar);                                      # in km/hr
-$wloverd = $apolar * $vloverd * $vloverd + $bpolar * $vloverd + $cpolar; # negative, in m/s
-$LoverD = (-0.2777777777 * $vloverd) / $wloverd;                         # convert v to m/s and allow for negative w
-$flightSummary = $flightSummary . sprintf("%s PolarInfo: %s (L/D=%.0f)\\n", $clockpr2, $glider, $LoverD);
-$flightSummary = $flightSummary . sprintf("${clockpr2} Polar speed adjustment: %s  \\n",  $polarFactor);
-# printf "${clockpr2} ThermallingSinkrate: %s m/s\n", $thermallingsinkrate ;
-$flightSummary = $flightSummary . sprintf("${clockpr2} ThermallingSinkrate: %s kt\\n", $thermallingsinkrate * $mps2kt);
-if ($thermalmultiplier != 1) {$flightSummary = $flightSummary . sprintf("${clockpr2} ThermalStrengthMuliplier: %.1f \\n", $thermalmultiplier);}
+$vloverd = sqrt($cpolar / $apolar);                                      # in km/hr (Eric - best glide speed))
+$wloverd = $apolar * $vloverd * $vloverd + $bpolar * $vloverd + $cpolar; # negative, in m/s (Eric - sink rate at best glide speed)
+$LoverD = (-0.2777777777 * $vloverd) / $wloverd;                         # convert v to m/s and allow for negative w (Eric - Max L/D)
 
-if (defined $adesc[0]) {
-    # TriGraphs
-    $flightSummary = $flightSummary . sprintf("${clockpr2} TnPts: %-3s - %s (%.3f,%.3f)\\n", $atp[0], $adesc[0], $alatpts[0], $alonpts[0]);
-    for (my $i = 1; $i <= $nleg; $i++) {
-        $flightSummary = $flightSummary . sprintf("${clockpr2}        %-3s - %s (%.3f,%.3f)\\n", $atp[$i], $adesc[$i], $alatpts[$i], $alonpts[$i]);
+#my $flightSummary = "";
+my $headerJson = "\"header\": ";
+my @headerKeys = ("valid", "startTime",
+    "region", "glider", "maxLd", "polarSpeedAdjustment",
+    "thermalStrengthMultiplier",
+    "thermalingSinkRate", "units");
+my $thermalingSinkRateInKts = sprintf "%3.2f", ($thermallingsinkrate * 3.28084 * 60.0);
+my @headerValues = ($validdayprt, ${VALIDTIME} . "local", $REGION, $glider,
+    $LoverD, $polarFactor, $thermalmultiplier, $thermalingSinkRateInKts, "ft/sec");
+
+$headerJson .= keyValuesToJson(\@headerKeys, \@headerValues);
+
+my $turnpointsJson = "\"routeTurnpoints\": [";
+my @turnpointKeys = ("number", "name", "lat", "lon");
+my @turnpointValues;
+for (my $i = 0; $i <= $nleg; $i++) {
+    if ($i > 0) {$turnpointsJson = $turnpointsJson . ",";}
+    if (defined $adesc[0]) {
+        @turnpointValues = ($atp[$i], $adesc[$i], $alatpts[$i], $alonpts[$i]);
     }
-}
-else {
-    # LatLons
-    $flightSummary = $flightSummary . sprintf("${clockpr2} Lat,Lons:  %7.5f %8.5f\\n", $alatpts[0], $alonpts[0]);
-    for (my $i = 1; $i <= $nleg; $i++) {
-        $flightSummary = $flightSummary . sprintf("${clockpr2}            %7.5f %8.5f\\n", $alatpts[$i], $alonpts[$i]);
+    else {
+        @turnpointValues = ($atp[$i], "   ", $alatpts[$i], $alonpts[$i]);
     }
+    $turnpointsJson = $turnpointsJson . keyValuesToJson(\@turnpointKeys, \@turnpointValues);
+
 }
+$turnpointsJson = $turnpointsJson . "]";
 
-### PRINT COLUMN HEADERS
-$flightSummary = $flightSummary . " ${clockdash}------------------------------------------------ \\n";
-$flightSummary = $flightSummary . " L ${clockprt}  -Spatial-Avg- ------Optimal-Flight-Avg------- \\n";
-$flightSummary = $flightSummary . " E ${clockstr}      Tail Clmb Tail Clmb      Gnd  Gnd Air Thm \\n";
-$flightSummary = $flightSummary . " G ${clockprt} Dist Wind Rate Wind Rate Time Spd  Spd Spd Pct \\n";
-$flightSummary = $flightSummary . "   ${clockprt}  km   kt   kt   kt   kt   min  kt km/h  kt  % \\n";
-
+my $legDetailJson = " \"legDetails\" : [";
+my @legDetailKeys = ("leg",
+    "clockTime",
+    "sptlAvgDistKm",
+    "sptlAvgTailWind",
+    "sptlAvgClimbRate",
+    "optAvgTailWind",
+    "optAvgClimbRate",
+    "optFlightTimeMin",
+    "optFlightGrndSpeedKt",
+    "optFlightGrndSpeedKmh",
+    "optFlightAirSpeedKt",
+    "optFlightThermalPct");
+my @turnpointDetailsValues = ();
 
 ### START OF LOOP OVER ALL TURNPOINTS
 my $totallength = 0;
@@ -898,7 +895,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
         ### *NB* $revtrackdegtrue defined in "meteorological" sense, i.e. in direction _opposite_ to vector, so can be compared to tailwind
         $windanglerad = $DEG2RAD * ($blwinddirtrue - $revtrackdegtrue);
         $tailwindmps[$i] = $blwindspdmps * cos($windanglerad);
-        #4testprint: print "$ileg $i TRACK,WINDrad= $revtrackdegtrue $blwinddirtrue => $tailwindmps[$i] \n" ;
+        #4testprint: print "$ileg $i TRACK,Wad=INDr $revtrackdegtrue $blwinddirtrue => $tailwindmps[$i] \n" ;
         #4test: print "TAIL/CROSSWIND(m/s) = $ileg $i $tailwindmps[$i] m/s <= $blwindspddata[$kgridptafter] kt @ $blwinddirdata[$kgridptafter] vs $dxtrack $dytrack $revtrackdegtrue \n" ;
 
         ### CALC OPTIMAL SOLN (optimal between-thermal airspeed does _not_ depend upon wind, but track ground speed does)
@@ -1048,7 +1045,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                 }
             }
             ### note: array @paramwarning gives parameters missing, but currently not printed
-            if ($#paramwarning > -1) {$warningfooter .= sprintf "data unavailable after %s so assumed constant then\n",
+            if ($#paramwarning > -1) {$warningfooter .= sprintf "Data unavailable after %s so assumed constant conditions after that time.",
                 $filetimelist{$paramwarning[0]}[$posttimeindex{$paramwarning[0]}];}
         }
 
@@ -1068,74 +1065,95 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
     }
     ### TEST FOR ZERO LEG LENGTH - IF SO SKIP REST OF PROCESSING FOR THIS LEG
     if ($leglength == 0) {
-        $flightSummary = $flightSummary . print "** WARNING - ignored a leg with zero length (duplicate turnpoint?)\n";
+        #$flightSummary .=   "** WARNING - ignored a leg with zero length (duplicate turnpoint?)\n";
+        my $message = "** WARNING - ignored a leg with zero length (duplicate turnpoint?)";
+        my @legDetailMessageKeys = ("leg", "message");
+        @legDetailValues = ($ileg, $message);
+        if ($ileg > 1) {$legDetailJson .= ","};
+        $legDetailJson .= keyValuesToJson(\@legDetailMessageKeys, \@legDetailValues);
         next LEG;
     }
-    $totallength += $leglength;
-    $totalspatialavgclimbratesum += $legspatialavgclimbratesum;
-    $totalspatialavgtailwindsum += $legspatialavgtailwindsum;
-    my $legkm = 0.001 * $leglength;
-    my $legspatialavgclimbrate = $legspatialavgclimbratesum / $leglength;
-    my $legspatialavgclimbratekt = $legspatialavgclimbrate * $mps2kt;
-    my $legspatialavgtailwindkt = $mps2kt * $legspatialavgtailwindsum / $leglength;
-    ### compute % of no solution "blocked" boxes
-    $totalblocked += $nblocked[$ileg];
-    $totallegboxs += $nlegboxs[$ileg];
-    ###### CALC + PRINT LEG OPTIMAL SOLUTION RESULTS
-    if ($lsolution[$ileg] == 0) {
-        my $legsec = 0;
-        my $legclimbratesum = 0;
-        my $legtailwindsum = 0;
-        my $legthermaltimesum = 0;
-        my $legoptairspeedsum = 0;
-        for (my $i = 0; $i <= ($nlegpts - 2); $i++) {
-            #4test: if ( ! defined $airspeed[$i] ) { print "UNDEFINED AIRSPEED - $i $length[$i] $seconds[$i] $vor[$i] \n" ; }
-            ### sum leg time
-            $legsec += $seconds[$i];
-            $legclimbratesum += $seconds[$i] * $thermallingclimbrate[$i];
-            $legtailwindsum += $seconds[$i] * $tailwindmps[$i];
-            $legoptairspeedsum += $seconds[$i] * $optairspeed_inglide[$i];
-            $legthermaltimesum += $seconds[$i] * $thermalpct[$i];
-            #boxprint: printf "%3d %6.1f %6.1f %3d %3d %8.0f %6.1f %5.0f \n",$i,$xsort[$i],$ysort[$i], $igridptafter[$i],$jgridptafter[$i], $length[$i], $optgroundspeed[$i],$seconds[$i]  ;
-        }
-        $totalsec += $legsec;
-        $totalclimbratesum += $legclimbratesum;
-        $totalthermaltime += $legthermaltimesum;
-        $totaloptairspeedsum += $legoptairspeedsum;
-        $totaltailwindsum += $legtailwindsum;
-        my $legmin = 0.01666667 * $legsec;
-        my $legavggroundspeedkt = $mps2kt * ($leglength / $legsec);
-        my $legavggroundspeedkph = 3.6 * ($leglength / $legsec);
-        my $legoptairspeedavgkt = $mps2kt * $legoptairspeedsum / $legsec;
-        my $legtailwindavgkt = $mps2kt * $legtailwindsum / $legsec;
-        my $legclimbrateavg = $legclimbratesum / $legsec;
-        my $legclimbrateavgkt = $legclimbrateavg * $mps2kt;
-        my $legthermalpct = $legthermaltimesum / $legsec;
-        ### MULTI-TIME LEG PRINTOUT INCLUDES TURNPOINT TIME
-        if ($LVALIDTIME == 0) {
-            my $oldclockhhmm = $clockhhmm;
-            $clockhhmm = 100 * int($clocksec / 3600.) + int(($clocksec - 3600. * (int($clocksec / 3600.))) / 60.);
-            $clockprt = sprintf "%04d-%04d", $oldclockhhmm, $clockhhmm;
-        }
-        else {$clockprt = '';}
-        ### Now with Climb Rates in Kt
-        # printf "%2d %s %4.0f %4.0f %4.1f %4.0f %4.1f %4.0f %3.0f  %3.0f %3.0f %3.0f \n", $ileg, $clockprt, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbrate, $legtailwindavgkt, $legclimbrateavg, $legmin, $legavggroundspeedkt, $legavggroundspeedkph, $legoptairspeedavgkt, $legthermalpct  ;
-        $flightSummary = $flightSummary . sprintf("%2d %s %4.0f %4.0f %4.1f %4.0f %4.1f %4.0f %3.0f  %3.0f %3.0f %3.0f \\n", $ileg, $clockprt, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, $legtailwindavgkt, $legclimbrateavgkt, $legmin, $legavggroundspeedkt, $legavggroundspeedkph, $legoptairspeedavgkt, $legthermalpct);
-
-    }
     else {
-        # PRINT LEG RESULTS WHEN NO OPTIMAL SOLUTION
-        $ltotalsolution = 0;
-        # compute % of no solution "blocked" boxes
-        $pctblocked = nint(100. * ($nblocked[$ileg] / $nlegboxs[$ileg]));
-        # legspatialaverageclimbrate now in Kt
-        $flightSummary = $flightSummary . sprintf("%2d %9s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", $ileg, "", $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, '%', $pctblocked);
-        # printf "%2d  %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \n", $ileg, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbrate, '%',$pctblocked ;
+        $totallength += $leglength;
+        $totalspatialavgclimbratesum += $legspatialavgclimbratesum;
+        $totalspatialavgtailwindsum += $legspatialavgtailwindsum;
+        my $legkm = 0.001 * $leglength;
+        my $legspatialavgclimbrate = $legspatialavgclimbratesum / $leglength;
+        my $legspatialavgclimbratekt = $legspatialavgclimbrate * $mps2kt;
+        my $legspatialavgtailwindkt = $mps2kt * $legspatialavgtailwindsum / $leglength;
+        ### compute % of no solution "blocked" boxes
+        $totalblocked += $nblocked[$ileg];
+        $totallegboxs += $nlegboxs[$ileg];
+        ###### CALC + PRINT LEG OPTIMAL SOLUTION RESULTS
+        if ($lsolution[$ileg] == 0) {
+            my $legsec = 0;
+            my $legclimbratesum = 0;
+            my $legtailwindsum = 0;
+            my $legthermaltimesum = 0;
+            my $legoptairspeedsum = 0;
+            for (my $i = 0; $i <= ($nlegpts - 2); $i++) {
+                #4test: if ( ! defined $airspeed[$i] ) { print "UNDEFINED AIRSPEED - $i $length[$i] $seconds[$i] $vor[$i] \n" ; }
+                ### sum leg time
+                $legsec += $seconds[$i];
+                $legclimbratesum += $seconds[$i] * $thermallingclimbrate[$i];
+                $legtailwindsum += $seconds[$i] * $tailwindmps[$i];
+                $legoptairspeedsum += $seconds[$i] * $optairspeed_inglide[$i];
+                $legthermaltimesum += $seconds[$i] * $thermalpct[$i];
+                #boxprint: printf "%3d %6.1f %6.1f %3d %3d %8.0f %6.1f %5.0f \n",$i,$xsort[$i],$ysort[$i], $igridptafter[$i],$jgridptafter[$i], $length[$i], $optgroundspeed[$i],$seconds[$i]  ;
+            }
+            $totalsec += $legsec;
+            $totalclimbratesum += $legclimbratesum;
+            $totalthermaltime += $legthermaltimesum;
+            $totaloptairspeedsum += $legoptairspeedsum;
+            $totaltailwindsum += $legtailwindsum;
+            my $legmin = 0.01666667 * $legsec;
+            my $legavggroundspeedkt = $mps2kt * ($leglength / $legsec);
+            my $legavggroundspeedkph = 3.6 * ($leglength / $legsec);
+            my $legoptairspeedavgkt = $mps2kt * $legoptairspeedsum / $legsec;
+            my $legtailwindavgkt = $mps2kt * $legtailwindsum / $legsec;
+            my $legclimbrateavg = $legclimbratesum / $legsec;
+            my $legclimbrateavgkt = $legclimbrateavg * $mps2kt;
+            my $legthermalpct = $legthermaltimesum / $legsec;
+            ### MULTI-TIME LEG PRINTOUT INCLUDES TURNPOINT TIME
+
+
+            if ($LVALIDTIME == 0) {
+                my $oldclockhhmm = $clockhhmm;
+                $clockhhmm = 100 * int($clocksec / 3600.) + int(($clocksec - 3600. * (int($clocksec / 3600.))) / 60.);
+                $clockprt = sprintf "%04d-%04d", $oldclockhhmm, $clockhhmm;
+            }
+            else {$clockprt = '';}
+            ### Now with Climb Rates in Kt
+            # printf "%2d %s %4.0f %4.0f %4.1f %4.0f %4.1f %4.0f %3.0f  %3.0f %3.0f %3.0f \n", $ileg, $clockprt, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbrate, $legtailwindavgkt, $legclimbrateavg, $legmin, $legavggroundspeedkt, $legavggroundspeedkph, $legoptairspeedavgkt, $legthermalpct  ;
+            # $flightSummary = $flightSummary . sprintf("%2d %s %4.0f %4.0f %4.1f %4.0f %4.1f %4.0f %3.0f  %3.0f %3.0f %3.0f \\n", $ileg, $clockprt, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, $legtailwindavgkt, $legclimbrateavgkt, $legmin, $legavggroundspeedkt, $legavggroundspeedkph, $legoptairspeedavgkt, $legthermalpct);
+            @legDetailValues = ($ileg, $clockprt, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, $legtailwindavgkt, $legclimbrateavgkt, $legmin, $legavggroundspeedkt, $legavggroundspeedkph, $legoptairspeedavgkt, $legthermalpct);
+            if ($ileg > 1) {$legDetailJson .= ","};
+            $legDetailJson .= keyValuesToJson(\@legDetailKeys, \@legDetailValues);
+        }
+        else {
+            # PRINT LEG RESULTS WHEN NO OPTIMAL SOLUTION
+            $ltotalsolution = 0;
+            # compute % of no solution "blocked" boxes
+            $pctblocked = nint(100. * ($nblocked[$ileg] / $nlegboxs[$ileg]));
+            # legspatialaverageclimbrate now in Kt
+            # printf "%2d  %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \n", $ileg, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbrate, '%',$pctblocked ;
+            # $flightSummary .=  sprintf("%2d %9s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", $ileg, "", $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, '%', $pctblocked);
+            ##my $message = sprintf("   NO SOLN    %sblocked=%2d ", '%', $pctblocked);
+            my $message = sprintf("No solution");
+            my @legDetailMessageKeys = ("leg",
+                "sptlAvgDistKm",
+                "sptlAvgTailWind",
+                "sptlAvgClimbRate",
+                "message");
+            @legDetailValues = ($ileg, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, $message);
+            if ($ileg > 1) {$legDetailJson .= ","};
+            $legDetailJson .= keyValuesToJson(\@legDetailMessageKeys, \@legDetailValues);
+        }
     }
 
 } ### END OF LOOP OVER ALL TURNPOINTS
 
-### Create JSON output
+# Get totals
 push(@xgridpoints, $xsort[$nlegpts - 1]);
 push(@ygridpoints, $ysort[$nlegpts - 1]);
 #print " final xgridpoints  :  $xgridpoints[$#xgridpoints]";
@@ -1168,19 +1186,34 @@ if ($ltotalsolution == 1) {
     }
     else {$clockprt = '';}
     #PAULS Climb Rates now in Knots
-    $flightSummary = $flightSummary . sprintf("TOT%s %4.0f %4.0f %4.1f %4.0f %4.1f %4.0f %3.0f  %3.0f %3.0f %3.0f \\n", $clockprt, $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, $totaltailwindavgkt, $totalclimbrateavgkt, $totalmin, $totalavggroundspeedkt, $totalavggroundspeedkph, $totaloptairspeedavgkt, $totalthermalpct);
-    # printf "TOT%s %4.0f %4.0f %4.1f %4.0f %4.1f %4.0f %3.0f  %3.0f %3.0f %3.0f \n", $clockprt, $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbrate, $totaltailwindavgkt, $totalclimbrateavg, $totalmin, $totalavggroundspeedkt, $totalavggroundspeedkph, $totaloptairspeedavgkt, $totalthermalpct  ;
+    #$flightSummary = $flightSummary . sprintf("TOT%s %4.0f %4.0f %4.1f %4.0f %4.1f %4.0f %3.0f  %3.0f %3.0f %3.0f \\n", $clockprt, $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, $totaltailwindavgkt, $totalclimbrateavgkt, $totalmin, $totalavggroundspeedkt, $totalavggroundspeedkph, $totaloptairspeedavgkt, $totalthermalpct);
+    @legDetailValues = ("TOT", $clockprt, $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, $totaltailwindavgkt, $totalclimbrateavgkt, $totalmin, $totalavggroundspeedkt, $totalavggroundspeedkph, $totaloptairspeedavgkt, $totalthermalpct);
+    $legDetailJson .= "," . keyValuesToJson(\@legDetailKeys, \@legDetailValues) . "]";
 }
 else {
     ###### PRINT OVERALL TOTAL RESULTS WHEN NO OPTIMAL SOLUTION
     ### compute % of no solution "blocked" boxes
     $pctblocked = nint(100. * ($totalblocked / $totallegboxs));
-    $flightSummary = $flightSummary . sprintf("TOT %8s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", "", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbrate, '%', $pctblocked);
+    #$flightSummary .=  sprintf("TOT %8s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", "", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbrate, '%', $pctblocked);
+    my @legDetailMessageKeys = ("leg", "sptlAvgDistKm", "sptlAvgTailWind", "sptlAvgClimbRate", "message");
+    @legDetailValues = ("TOT", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, sprintf("No solution\\n%sblocked=%2d", '%', $pctblocked));
+    $legDetailJson .= "," . keyValuesToJson(\@legDetailMessageKeys, \@legDetailValues) . "]";
 }
 ### PRINT WARNING FOOTER, if any
-if ($warningfooter ne '') {$flightSummary = $flightSummary . "\\nWARNING: ${warningfooter}";}
+my $footerJson = "\"footers\": [";
+my @footerKeys = ("message");
+my @footerValues;
+if ($warningfooter ne '') {
+    #$flightSummary = $flightSummary . "\\nWARNING: ${warningfooter}";
+    @footerValues = ("WARNING: ${warningfooter}");
+    $footerJson .= keyValuesToJson(\@footerKeys, \@footerValues);
+    $footerJson .= ","; # Cause you always add following warning
+}
 
-$flightSummary = $flightSummary . "\\nFAI distances may differ from values given above\\n";
+# $flightSummary = $flightSummary . "\\nFAI distances may differ from values given above\\n";
+@footerValues = ("FAI distances may differ from calculated values.");
+$footerJson .= keyValuesToJson(\@footerKeys, \@footerValues);
+$footerJson .= "]";
 
 
 # Eric - convert x,y grid points to lat/lons
@@ -1226,22 +1259,25 @@ for (my $i = 0; $i <= $#routedata; $i++) {
 
 # Convert route points to JSON string
 my $routeJson = " \"routePoints\": [";
-my @routeKeys = ("Lat", "Lon", "Leg", "Segment", "XPos", "YPos", "Distance", "Time", "Length", "ClimbRate", "Thermal Strength", "TailWind(mps)", "Grnd Speed", "Thermal%", "Seconds");
-for (my $i = 0; $i <= $#latlonRouteData; $i++) {
-    my @routePoint = @{$latlonRouteData[$i]};
-    $routeJson = $routeJson . keyValuesToJson(\@routeKeys, \@routePoint);
-    if ($i != $#latlonRouteData) {$routeJson = $routeJson . ",";}
-
-}
+# Not used in app so not sending data.
+#my @routeKeys = ("lat", "lon", "leg", "segment", "xPos", "yPos", "distance", "time", "length", "climbRate", "thermalStrength", "tailWindMps", "groundSpeed", "thermalPct", "seconds");
+#for (my $i = 0; $i <= $#latlonRouteData; $i++) {
+#    if ($i > 0) {$routeJson = $routeJson . ",";}
+#    my @routePoint = @{$latlonRouteData[$i]};
+#    $routeJson = $routeJson . keyValuesToJson(\@routeKeys, \@routePoint);
+#}
 $routeJson = $routeJson . "]";
 
 # create final json string.
-$summaryJson = "{ \"summary\" : \"$flightSummary\", $routeJson }";
+
+#$summaryJson = "{ \"summary\" : \"$flightSummary\", $routeJson }";
+#$summaryJson = "{\"summary\ : { $headerJson,$footerJson,$turnpointsJson,$legDetailJson,$routeJson }}";
+$summaryJson = "{\"summary\" : { $headerJson,$footerJson,$turnpointsJson,$legDetailJson, $routeJson }}";
 print $summaryJson;
 
 sub reportError {
     my $errorMsg = $_[0];
-    my $errorJson = "{ \"error\" : \"$errorMsg\" }";
+    my $errorJson = "{\"summary\" : {  \"error\" : \"$errorMsg\" }}";
     print $errorJson;
 }
 
@@ -1263,19 +1299,19 @@ sub zmapxyplotread() {
     if (-f "$inputfile") {@FILE = `cat $inputfile`;}
     elsif (-f "${inputfile}.zip") {@FILE = `unzip -p "${inputfile}.zip"`;}
     else {
-        return ("*** $program ERROR: data file $inputfile NOT FOUND \n", ());
+        return ("*** $program ERROR: data file $inputfile NOT FOUND \\n", ());
     }
 
     # search for marker line
     my $line = '';
     while (defined $line && $line !~ /^---/) {
         if (!defined $line) {
-            return ("*** $program ERROR: Undefined line : $inputfile  \n", ());
+            return ("*** $program ERROR: Undefined line : $inputfile\\n", ());
         }
         $line = shift @FILE;
     }
     if (!defined $line || $line !~ /^---/) {
-        return ("*** $program ERROR: data file $inputfile MISSING DATA \n", ());
+        return ("*** $program ERROR: data file $inputfile MISSING DATA \\n", ());
     }
 
     ### READ HEADER LINES
