@@ -55,7 +55,7 @@ sub ij2latlon_gbsc {
         #print $datalines[$iiline];
         ### do not allow blank in simulation name (so number of blank-delimited fields in output line always known)
         if ($datalines[$iiline] =~ m|^ *SIMULATION_NAME * = * [\"\'] *([^\"\']*)[\"\' ]|i) {$SIMULATION_NAME = $1;};
-        # Eric - updated file parm names to match logic in get_optimal_flight_avg.PL and latlon2ij.PL
+        # Eric - updated file parm names to match logic in get_estimated_flight_avg.PL and latlon2ij.PL
         if ($datalines[$iiline] =~ m|^ *parent_grid_ratio\s*=\s*(.*)\s*$|i) {@RATIO_TO_PARENT = split(/ *,/, $1);}
         if ($datalines[$iiline] =~ m|^ *i_parent_start\s*=\s*(.*)\s*$|i) {@DOMAIN_ORIGIN_LLI = split(/ *,/, $1);}
         if ($datalines[$iiline] =~ m|^ *j_parent_start\s*=\s*(.*)\s*$|i) {@DOMAIN_ORIGIN_LLJ = split(/ *,/, $1);}

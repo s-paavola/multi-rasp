@@ -7,7 +7,7 @@
 #        3. Returning JSON
 #
 # Example call:
-#   perl get_optimal_flight_avg.PL  ../NewEngland/2023-08-11/gfs NewEngland  d2 1000x  "LS-4a" 1 1 1 "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
+#   perl get_estimated_flight_avg.PL  ../NewEngland/2023-08-11/gfs NewEngland  d2 1000x  "LS-4a" 1 1 1 "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
 
 ##### PAULS - 2017-10-16 BLOCKED if optgroundspd < 0.05 mps (= 0.1 Knot)  [Was <= 0.0] See line 940
 ##### PAULS - 2008-08-02 Warnings turned off at lines 900 1025 1039 & 1062 to avoid cluttering logs with errors from sqrt(-ve num) #####
@@ -41,7 +41,7 @@ $summaryJson = "";
 if ($#ARGV < 10) {
     # $#ARGV is 0 based so really looking for 11 arguments
     #-----------------description------------------------------------
-    $summaryJson .= "{ \"error\" : \"Calc+Output optimal time along path based on \\\"speed to fly\\\" eqns.";
+    $summaryJson .= "{ \"error\" : \"Calc+Output estimated time along path based on \\\"speed to fly\\\" eqns.";
     $summaryJson .= "\\n\\t0 = Data directory";
     $summaryJson .= "\\n\\t1 = Region";
     $summaryJson .= "\\n\\t2 = Grid";

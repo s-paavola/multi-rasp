@@ -3,7 +3,7 @@
 ### CALC RASP BLIPMAP TRACK AVG, SPATIAL AND OPTIMAL FLIGHT
 ### Eric - Modified from original get_rasptrackavg for GBSC RASP  - return JSON containing route
 ###
-### curl 'http://192.168.1.6/cgi/get_optimal_flight_avg.cgi?region=NewEngland&date=2023-08-11&model=gfs&grid=d2&time=1300&glider=206%20Hornet&polarFactor=1.0&polarCoefficients=-0.0002%2C0.0244%2C-1.4700&tsink=1.0&tmult=1.0&turnpts=1%2C42.42616666666667%2C-71.7938333333333%2CSter%2C2%2C42.805%2C-72.00283333333333%2CJaff%2C3%2C42.100833333333334%2C-72.03883333333333%2CSout%2C4%2C42.42616666666667%2C-71.79383333333332%2CSter'
+### curl 'http://192.168.1.6/cgi/get_estimated_flight_avg.cgi?region=NewEngland&date=2023-08-11&model=gfs&grid=d2&time=1300&glider=206%20Hornet&polarFactor=1.0&polarCoefficients=-0.0002%2C0.0244%2C-1.4700&tsink=1.0&tmult=1.0&turnpts=1%2C42.42616666666667%2C-71.7938333333333%2CSter%2C2%2C42.805%2C-72.00283333333333%2CJaff%2C3%2C42.100833333333334%2C-72.03883333333333%2CSout%2C4%2C42.42616666666667%2C-71.79383333333332%2CSter'
 ################################################################################
 #print "Content-type: text/html\n\n${headerline}";
 print "Content-type:application/json \n\n";
@@ -24,7 +24,7 @@ my $rasp_basedir;
 if ($SCRIPTDIR =~ m|^((/[\w][\w.-]*)+)/([\w.-]+)$|) {$rasp_basedir = $1;}
 
 ### Program that executes summary and outputs JSON
-my $EXTRACTSCRIPT = "$SCRIPTDIR/get_optimal_flight_avg.PL";
+my $EXTRACTSCRIPT = "$SCRIPTDIR/get_estimated_flight_avg.PL";
 
 #print "rasp_basedir : $rasp_basedir";
 
@@ -111,10 +111,10 @@ if (defined $turnpts) {
 }
 
 my @args = ($dataDir, $region, $grid, $validtime, $glider, $polarFactor, $polarCoefficients, $tsink, $tmult, $type, $latlons);
-#$routeData = `$SCRIPTDIR/get_optimal_flight_avg.PL  $dataDir $region  $grid $validtime  $glider  $polarFactor $polarCoefficients  $tsink  $tmult  $type $latlons`;
+#$routeData = `$SCRIPTDIR/get_estimated_flight_avg.PL  $dataDir $region  $grid $validtime  $glider  $polarFactor $polarCoefficients  $tsink  $tmult  $type $latlons`;
 system($EXTRACTSCRIPT, @args);
 
-#print "Finished get_optimal_flight_avg.cgi";
+#print "Finished get_estimated_flight_avg.cgi";
 #print $routeData;
 
 
