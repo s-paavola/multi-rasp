@@ -203,6 +203,7 @@ if( $LINFO != 0 )
 else {
 	### PRINT ONLY NUMERICAL PARAMETER VALUES (all times on one row for each parameter, ala table)
 	foreach $param (@paramdolist) {
+		$printline .= sprintf "%s ", $param;
 		foreach $time (@timedolist) {
 			if($param eq "sfcsunpct"){
 				if($prtspot{$param}{$time} eq '-999.00'){

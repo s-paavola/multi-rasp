@@ -13,8 +13,11 @@ use DateTime;
 
 # Model parameters are defined in the following hash. For each model,
 #
-#  ftpSite - URL for the site holding the files
-#  ftpDirectoryProto - prototype for the directory that holds the files.
+#  ftpSite - URL for the ftp site holding the files
+#  ftpDirectoryProto - prototype for the ftp directory that holds the files.
+#    use DateTime->strftime to format.
+#  httpSite - URL for the http site holding the files
+#  httpDirectoryProto - prototype for the http directory that holds the files.
 #    use DateTime->strftime to format.
 #  fileNameProto - prototype for the file name.
 #    use sprintf(proto, analTime, validTime) to format.
@@ -27,33 +30,41 @@ use DateTime;
 
 my %defs = (
     nam => {
-        ftpSite => 'ftp.ncep.noaa.gov',
+        ftpSite => 'ftpprd.ncep.noaa.gov',
         ftpDirectoryProto => "pub/data/nccf/com/nam/prod/nam.%Y%m%d",
         fileNameProto => "nam.t%02dz.awip3d%02d.tm00.grib2",
+        httpSite => 'https://nomads.ncep.noaa.gov',
+        httpDirectoryProto => "pub/data/nccf/com/nam/prod/nam.%Y%m%d",
         analTimes => [ 18, 6 ],
         validTimes => [ 84, 3 ],
         availDelay => DateTime::Duration->new(hours => 2, minutes => 00)
     },
     gfs => {
-        ftpSite => 'ftp.ncep.noaa.gov',
+        ftpSite => 'ftpprd.ncep.noaa.gov',
         ftpDirectoryProto => "pub/data/nccf/com/gfs/prod/gfs.%Y%m%d/%H/atmos",
         fileNameProto => "gfs.t%02dz.pgrb2full.0p50.f%03d",
+        httpSite => 'https://nomads.ncep.noaa.gov',
+        httpDirectoryProto => "pub/data/nccf/com/gfs/prod/gfs.%Y%m%d/%H/atmos",
         analTimes => [ 18, 6 ],
         validTimes => [ 240, 3 ],
         availDelay => DateTime::Duration->new(hours => 3, minutes => 25)
     },
     rap => {
-        ftpSite => 'ftp.ncep.noaa.gov',
+        ftpSite => 'ftpprd.ncep.noaa.gov',
         ftpDirectoryProto => "pub/data/nccf/com/rap/prod/rap.%Y%m%d",
         fileNameProto => "rap.t%02dz.awp130bgrbf%02d.grib2",
+        httpSite => 'https://nomads.ncep.noaa.gov',
+        httpDirectoryProto => "pub/data/nccf/com/rap/prod/rap.%Y%m%d",
         analTimes => [ 23, 1 ],
         validTimes => [ 21, 1 ],
         availDelay => DateTime::Duration->new(hours => 0, minutes => 55)
     },
     hrrr => {
-        ftpSite => 'ftp.ncep.noaa.gov',
+        ftpSite => 'ftpprd.ncep.noaa.gov',
         ftpDirectoryProto => "pub/data/nccf/com/hrrr/prod/hrrr.%Y%m%d/conus",
         fileNameProto => "hrrr.t%02dz.wrfprsf%02d.grib2",
+        httpSite => 'https://nomads.ncep.noaa.gov',
+        httpDirectoryProto => "pub/data/nccf/com/hrrr/prod/hrrr.%Y%m%d/conus",
         analTimes => [ 23, 1 ],
         validTimes => [ 18, 1 ],
         availDelay => DateTime::Duration->new(hours => 1, minutes => 00)
@@ -75,14 +86,28 @@ lazy        => 1,
 builder     => '_buildFtpSite',
 );
 
-sub _buildFtpSite { return $defs{$_[0]->modelName}{"ftpSite"}; }
-
 # ftp directory that holds the model results
 has 'ftpDirectoryProto' => (
 is          => 'ro',
 isa         => 'Str',
 lazy        => 1,
 builder     => '_buildFtpDirectoryProto',
+);
+
+# http site that holds the model results
+has 'httpSite' => (
+is          => 'ro',
+isa         => 'Str',
+lazy        => 1,
+builder     => '_buildHttpSite',
+);
+
+# http directory that holds the model results
+has 'httpDirectoryProto' => (
+is          => 'ro',
+isa         => 'Str',
+lazy        => 1,
+builder     => '_buildHttpDirectoryProto',
 );
 
 # file name prototype
@@ -133,13 +158,24 @@ lazy        => 1,
 builder     => '_buildFtpDirectory',
 );
 
+# http directory
+has 'httpDirectory' => (
+is          => 'ro',
+isa         => 'Str',
+lazy        => 1,
+builder     => '_buildHttpDirectory',
+);
+
 # Expected time for first file, then time of last file
 has 'expectTime' => (
 is          => 'rw',
 isa         => 'DateTime',
 );
 
+sub _buildFtpSite { return $defs{$_[0]->modelName}{"ftpSite"}; }
 sub _buildFtpDirectoryProto { return $defs{$_[0]->modelName}{"ftpDirectoryProto"}; }
+sub _buildHttpSite { return $defs{$_[0]->modelName}{"httpSite"}; }
+sub _buildHttpDirectoryProto { return $defs{$_[0]->modelName}{"httpDirectoryProto"}; }
 sub _buildfileNameProto { return $defs{$_[0]->modelName}{"fileNameProto"}; }
 sub _buildAnalTimes { return $defs{$_[0]->modelName}{"analTimes"}; }
 sub _buildValidTimes { return $defs{$_[0]->modelName}{"validTimes"}; }
@@ -148,6 +184,11 @@ sub _buildAvailDelay { return $defs{$_[0]->modelName}{"availDelay"}; }
 sub _buildFtpDirectory {
     my $self = shift;
     return $self->analTime->strftime($self->ftpDirectoryProto);
+}
+
+sub _buildHttpDirectory {
+    my $self = shift;
+    return $self->analTime->strftime($self->httpDirectoryProto);
 }
 
 # Default analysis time is now

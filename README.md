@@ -3,12 +3,13 @@ Start with a functioning Linux. There are several Linux distributions to choose 
 ## Fedora
 perl packages - install with yum:
 ```
-sudo yum install perl-DateTime perl-Moose perl-Thread-Queue \
+sudo yum install cpan perl-DateTime perl-Moose perl-Thread-Queue \
     perl-Set-Scalar \
     perl-File-Fetch perl-DateTime-Format-Strptime \
     perl-DateTime-Format-Duration perl-List-MoreUtils \
     perl-JSON perl-Net-Lite-FTP.noarch perl-CGI \
-    perl-List-MoreUtils perl-Math-Complex perl-Net-SFTP
+    perl-List-MoreUtils perl-Math-Complex perl-Net-SFTP \
+    perl-LWP-Protocol-https.noarch
 ```
 Linux packages:
 ```

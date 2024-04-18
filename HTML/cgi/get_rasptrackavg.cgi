@@ -150,7 +150,7 @@
 
   $footerline = ' </BODY></HTML>' ;
   if ( $calcout !~ m|error|i ) {
-    print "Content-type: text/html\n\n${headerline}<TABLE><TR valign=\"top\"><TD><BR><PRE>${calcout}</PRE></TD><TD><IMG SRC=\"/cgi-bin/display_png.cgi?file=/tmp/rasptrackavg.multiplot.${tmpid}.png\"></TD></TR></TABLE> ${footerline}\n";
+    print "Content-type: text/html\n\n${headerline}<TABLE><TR valign=\"top\"><TD><BR><PRE>${calcout}</PRE></TD><TD><IMG SRC=\"display_png.cgi?file=/tmp/rasptrackavg.multiplot.${tmpid}.png\"></TD></TR></TABLE> ${footerline}\n";
   }
   else {
     print "Content-type: text/html\n\n${headerline}<PRE>${calcout}<BR>${plotout}</PRE> ${footerline}\n";

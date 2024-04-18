@@ -77,18 +77,44 @@ sub downloadFiles {
     # Make sure target directory is available
     my $targetDir = "$baseDir/" . $self->dir;
     `mkdir -p $targetDir 2>/dev/null`;
+
+    my $ret = tryHttps($self, $baseDir, $targetDir, $VERBOSE);
+    if ($ret < 0)
+    {
+	$ret = tryFtp($self, $baseDir, $targetDir, $VERBOSE);
+    }
+
+    if ($ret < 0)
+    {
+	# flush the queue on fatal
+	for my $file ($self->fileList->members)
+	{
+	    $self->fileList->delete ($file);
+	}
+	return undef;
+    }
+    return $ret;
+}
+
+# Try using FTP
+# Return: -1 if fatal error, otherwise delay time
+sub tryFtp {
+    my $self = shift;
+    my $baseDir = shift;
+    my $targetDir = shift;
+    my $VERBOSE = shift;
     
     # Create connection
     my $ftp = Net::FTP->new($self->ftpSite, (Debug => $VERBOSE > 1, Timeout => 600));
     if (!$ftp)
     {
         print "Cannot connect to ".$self->ftpSite.": $@\n";
-        return $fnfDelay;
+        return -1;
     }
     if (!$ftp->login("anonymous", $::ADMIN_EMAIL_ADDRESS))
     {
         print "Cannot login ", $ftp->message, "\n";
-        return $fnfDelay;
+        return -1;
     }
     if (!$ftp->cwd($self->ftpDirectory))
     {
@@ -127,6 +153,39 @@ sub downloadFiles {
             print "   Waited $late minutes for $file\n" unless $cnt > 0;
             last;
         }
+        my $time = `/usr/bin/date +%H:%M:%S`;
+        chomp $time;
+        print "   $time: Downloaded $file\n";
+        $self->fileList->delete ($file);
+        $self->expectTime(DateTime->now);
+        $cnt ++;
+        return 0 if $cnt >= 5;   # early return if might be able to start a model
+    }
+    return ($cnt > 0 ? 0 : $fnfDelay);
+}
+
+# Try using HTTPS
+# Return: -1 if fatal error, otherwise delay time
+sub tryHttps {
+    my $self = shift;
+    my $baseDir = shift;
+    my $targetDir = shift;
+    my $VERBOSE = shift;
+
+    use LWP::Simple;
+    use HTTP::Status;
+
+    my $cnt = 0;
+    for my $file ( sort $self->fileList->members )
+    {
+	my $url = $self->httpSite . "/" . $self->httpDirectory
+	 	. "/" . $file;
+	my $response = getstore($url, "$targetDir/$file");
+	if (is_error($response))
+	{
+	    print "Error: ", status_message($response), "\n  $url\n";
+            last;
+	}
         my $time = `/usr/bin/date +%H:%M:%S`;
         chomp $time;
         print "   $time: Downloaded $file\n";
