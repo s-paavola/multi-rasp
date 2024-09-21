@@ -17,7 +17,7 @@ our @airspaceFiles = ( "CLASS_B.kmz", "CLASS_C.kmz", "CLASS_D.kmz",
 		       "PROHIBITED.kmz", "RESTRICTED.kmz" );
 
 ### base URL for airspace files - can be empty if co-located
-our $airspaceBaseUrl = "http://www.thepaavolas.net/rasp/";
+our $airspaceBaseUrl = "";
 
 ### Initial region to display if region not provided as query parameter.
 ### If this parameter not supplied, the first region alphabetically
@@ -30,4 +30,17 @@ our $initialRegion = "NewEngland";
 #our $ServerPassword = "password";
 #our $ServerDir = "directory";
 #our $Mode = "sftp";
+#our $Server = "ftp.thepaavolas.net";
+#our $ServerLogin = "s_paavo1a";
+#our $ServerPassword = "cimfuT-4wibju-hojviw";
+#our $ServerDir = "rasp";
+#our $Server = "ftp.soargbsc.com";
+#our $ServerLogin = "sp_rasp";
+#our $ServerPassword = 'b3tTeR-6l1DeR';
+#our $ServerDir = ".";
+our $Server = "soargbsc.net";
+our $ServerLogin = "rasp";
+our $ServerDir = "htdocs";
+our $Mode = "sftp";
+our $Today = "NewEngland/date/nam/experimental1.1400local.d2.body.png";
 1.;

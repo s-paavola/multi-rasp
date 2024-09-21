@@ -9,7 +9,7 @@ sudo yum install cpan perl-DateTime perl-Moose perl-Thread-Queue \
     perl-DateTime-Format-Duration perl-List-MoreUtils \
     perl-JSON perl-Net-Lite-FTP.noarch perl-CGI \
     perl-List-MoreUtils perl-Math-Complex perl-Net-SFTP \
-    perl-LWP-Protocol-https.noarch
+    perl-LWP-Protocol-https.noarch perl-Net-SFTP-Foreign.noarch
 ```
 Linux packages:
 ```
@@ -201,7 +201,12 @@ Then build using:
      ln -s /usr/lib64 netcdf/lib
      NETCDF=$PWD/netcdf ./configure
 ```
-Edit configure.wps to have -lnetcdff before the -lnetcdf
+Edit configure.wps
+* add -lnetcdff before the -lnetcdf
+* Add the following before -I$(NETCDF)/include
+...
+    -I$(NETCDF)/lib/gfortran/modules \
+...
 ```
 NETCDF=$PWD/netcdf ./compile |& tee build.log
 cp -p geogrid/geogrid.exe ungrib/ungrib.exe \

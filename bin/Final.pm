@@ -41,6 +41,7 @@ my @inventory = (
     "w3.css",
     "newParamList.js",
     "rasp.js",
+    "RASPoverlay.js",
     "slider.png",
     "sndmkr.png",
     "Today.png",

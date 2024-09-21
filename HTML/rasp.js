@@ -2,51 +2,60 @@
  * Globals
  */
 
-var plotData;                   // Raw data - gets transformed into runStatus
-var runStatus;                  // Status of run - plotnames, times, etc.
-var soundings = {};		// soundings parameters
+let plotData;                   // Raw data - gets transformed into runStatus
+let runStatus;                  // Status of run - plotnames, times, etc.
+let soundings = {};		// soundings parameters
 
-var regionIdx = {};		// Region to Regions index conversion
-var curRegion;                  // Current region name
-var curModel;                   // Current model
-var curDate;                    // Current date
-var curTime;                    // Current time being displayed
-var timeIdx;                    // times/cache index for current time
-var curPlot;                    // Name of current plot
-var curSounding;                // Current sounding selection if active
-var baseRef;                    // Plots path - region/date/model
-var runLoc;                     // Reference to current row in runStatus
-var plotWasCentered = false;    // True if plot was previously centered
+let regionIdx = {};		// Region to Regions index conversion
+let curRegion;                  // Current region name
+let curModel;                   // Current model
+let curDate;                    // Current date
+let curTime;                    // Current time being displayed
+let timeIdx;                    // times/cache index for current time
+let curPlot;                    // Name of current plot
+let curSounding;                // Current sounding selection if active
+let baseRef;                    // Plots path - region/date/model
+let runLoc;                     // Reference to current row in runStatus
+let plotWasCentered = false;    // True if plot was previously centered
 
 // Google map info
-var map;                        // Google map reference
-var zoom = 7;                   // initial zoom
-var overlay;                    // Overlay object reference
-var airspaceFiles = [];		// array of airspace file names (.kmz/.kml)
-var airspaceBaseUrl;		// airspace base url
-var airspace = [];		// array of airspace layers
-var initialRegion;		// initial region to display
-var markerArray = [];
-var setCenter;                  // LatLng object for desired center
-var bounds;                     // Google bounds object
-var infoArray = [];             // popup info window
-var wasLong = false;            // Tracks whether left-click was long
+let map;                        // Google map reference
+let zoom = 7;                   // initial zoom
+let overlay;                    // Overlay object reference
+let airspaceFiles = [];		// array of airspace file names (.kmz/.kml)
+let airspaceBaseUrl;		// airspace base url
+let airspace = [];		// array of airspace layers
+let initialRegion;		// initial region to display
+let markerArray = [];
+let setCenter;                  // LatLng object for desired center
+let bounds;                     // Google bounds object
+let infoArray = [];             // popup info window
+let wasLong = false;            // Tracks whether left-click was long
 
 // Opacity globals
-var opacity = 50;               // initial value
-var OPACITY_MAX_PIXELS = 57;    // Width of opacity control image
-var knobCreated = false;        // knob creation status
+let opacity = 50;               // initial value
+let OPACITY_MAX_PIXELS = 57;    // Width of opacity control image
+let knobCreated = false;        // knob creation status
+
+let RASPoverlay;
+
+async function getRASPoverlay() {
+    module = await import("./RASPoverlay.js");
+    RASPoverlay = module.RASPoverlay;
+}
 
 /*
  * Initialization
  */
 function initIt()
 {
+    getRASPoverlay();
+    setSize();
+
     map = newMap();
 
     getURL("current.json", baseDataAndMenu)
     window.onresize = function() {setSize();}
-    setSize();
     
     // google maps event processing
     new LongClick(map, 2000);                   // long click processing
@@ -141,7 +150,7 @@ function baseData(URL, data)
     airspaceBaseUrl = data.airspace.baseUrl;
     initialRegion = data.initialRegion;
     if (airspaceBaseUrl == "") airspaceBaseUrl = location.href;
-    airspaceBaseUrl = airspaceBaseUrl.replace(/\?.*/,"");
+    airspaceBaseUrl = airspaceBaseUrl.replace(/[^/\\]+\.\w+$/,"");
     // create models for each region
     for (idx = 0; idx < plotData.length; idx++)
     {
@@ -775,150 +784,6 @@ function newMap()
     map = new google.maps.Map(document.getElementById("plotImg"), mapOptions);
 
     return( map );
-}
-
-// Create overlay class
-RASPoverlay.prototype = new google.maps.OverlayView();
-
-// Constructor
-function RASPoverlay(bounds, image, map)
-{
-    this.bounds_        = bounds;
-    this.image_         = image;
-    this.map_           = map;
-    this.div            = null;
-    
-    this.setMap(map);
-}
-
-// Clear the overlay
-RASPoverlay.prototype.clear = function()
-{
-    this.setMap(null);
-}
-
-// called when map's panes are ready and overlay has been added to map
-RASPoverlay.prototype.onAdd = function()
-{
-    // create div element to hold overlay
-    var div = document.createElement("div") ;
-    div.style.borderStyle = "none";
-    div.style.borderWidth = "0px";
-    div.style.position    = "absolute" ;
-    
-    // create img element
-    var img = document.createElement("img");
-    img.src          = this.image_;
-    img.style.width  = "100%";
-    img.style.height = "100%";
-    img.style.position = "absolute";
-    div.appendChild(img);
-    
-    this.div_ = div;
-    
-    // Add to the "overlayLayer" pane
-    var panes = this.getPanes();
-    if (panes.overlayLayer.childElementCount != 0)
-    {
-        panes.overlayLayer.replaceChild(div, panes.overlayLayer.childNodes[0])
-    } else {
-        panes.overlayLayer.appendChild(div);
-    }
-}
-
-// draw the overlay
-RASPoverlay.prototype.draw = function()
-{
-    var overlayProjection = this.getProjection();
-    
-    if(overlayProjection == undefined)
-        return;
-    
-    var sw = overlayProjection.fromLatLngToDivPixel(this.bounds_.getSouthWest());
-    var ne = overlayProjection.fromLatLngToDivPixel(this.bounds_.getNorthEast());
-    
-    // Position our DIV using our bounds
-    if(this.div_ == null)
-        return;
-    this.div_.style.left   = Math.min(sw.x,  ne.x) + "px";
-    this.div_.style.top    = Math.min(ne.y,  sw.y) + "px";
-    this.div_.style.width  = Math.abs(sw.x - ne.x) + "px";
-    this.div_.style.height = Math.abs(ne.y - sw.y) + "px";
-    
-    this.setOpacity();
-}
-
-// Remove the main DIV from the map pane
-RASPoverlay.prototype.onRemove = function()
-{
-    this.div_.parentNode.removeChild(this.div_);
-    this.div_ = null;
-}
-
-// Opacity utility functions
-RASPoverlay.prototype.isVisible = function()
-{
-    return ( this.div_ ? ((this.div_.style.visibility == 'visible') ?  true : false ) : false);
-}
-
-RASPoverlay.prototype.hide = function()
-{
-    if(this.div_){
-        this.div_.style.visibility = 'hidden';
-    }
-}
-
-RASPoverlay.prototype.show = function()
-{
-    if(this.div_){
-        this.div_.style.visibility = 'visible';
-    }
-}
-
-RASPoverlay.prototype.toggle = function() {
-    if (this.div_) {
-        if (this.div_.style.visibility === 'hidden') {
-            this.show();
-        } else {
-            this.hide();
-        }
-    }
-};
-
-RASPoverlay.prototype.toggleDOM = function() {
-    if (this.getMap()) {
-        // Note: setMap(null) calls OverlayView.onRemove()
-        this.setMap(null);
-    } else {
-        this.setMap(this.map_);
-    }
-};
-
-RASPoverlay.prototype.setOpacity=function()
-{
-    var c = opacity/100 ;
-    var d = this.div_ ;
-    
-    if (d) {
-        this.show();
-        if (typeof(d.style.filter)       == 'string') { d.style.filter = 'alpha(opacity=' + opacity + ')'; } //IE
-        if (typeof(d.style.KHTMLOpacity) == 'string') { d.style.KHTMLOpacity = c ; }
-        if (typeof(d.style.MozOpacity)   == 'string') { d.style.MozOpacity = c ; }
-        if (typeof(d.style.opacity)      == 'string') { d.style.opacity = c ; }
-    }
-}
-
-
-RASPoverlay.prototype.getOpacity=function()
-{
-    var d = this.div_ ;
-    if(d){
-        if (typeof(d.style.filter)       == 'string') { d.style.filter = 'alpha(opacity=' + opacity + ');'; } //IE
-        if (typeof(d.style.KHTMLOpacity) == 'string') { return(100 * d.style.KHTMLOpacity); }
-        if (typeof(d.style.MozOpacity)   == 'string') { return(100 * d.style.MozOpacity);   }
-        if (typeof(d.style.opacity)      == 'string') { return(100 * d.style.opacity);      }
-    }
-    return(undefined);
 }
 
 /*

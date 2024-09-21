@@ -259,6 +259,12 @@ sub _do_prep {
     (my $ucName = $self->modelName) =~ tr/a-z/A-Z/;
     for ("GENPARM.TBL", "LANDUSE.TBL", "SOILPARM.TBL", "VEGPARM.TBL",
         "ETAMPNEW_DATA.expanded_rain", "Vtable.".$ucName, "RRTM_DATA",
+	"CAMtr_volume_mixing_ratio", "CAMtr_volume_mixing_ratio.A1B",
+	"CAMtr_volume_mixing_ratio.A2", "CAMtr_volume_mixing_ratio.RCP4.5",
+	"CAMtr_volume_mixing_ratio.RCP6", "CAMtr_volume_mixing_ratio.RCP8.5",
+	"CAMtr_volume_mixing_ratio.SSP119", "CAMtr_volume_mixing_ratio.SSP126",
+	"CAMtr_volume_mixing_ratio.SSP245", "CAMtr_volume_mixing_ratio.SSP370",
+	"CAMtr_volume_mixing_ratio.SSP585",
 	)
     {
         next if -e "$tempDir/$_";
