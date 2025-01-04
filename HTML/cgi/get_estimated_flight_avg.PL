@@ -7,60 +7,9 @@
 #        3. Returning JSON
 #
 # Example call:
-#   perl get_estimated_flight_avg.PL  ../NewEngland/2023-08-11/gfs NewEngland  d2 1000x  "LS-4a" 1 1 1 "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
-
-##### PAULS - 2017-10-16 BLOCKED if optgroundspd < 0.05 mps (= 0.1 Knot)  [Was <= 0.0] See line 940
-##### PAULS - 2008-08-02 Warnings turned off at lines 900 1025 1039 & 1062 to avoid cluttering logs with errors from sqrt(-ve num) #####
-##### PAULS - 2008-08-03 Can't have -T flag to perl. Opening a file for writing is not allowed - see "man perlsec"
-
-# Eric - Debugging
-#my $total = $#ARGV;
-#print "Number of arguments (0 based): $total \n";
-#my $counter = 0;
-#foreach my $a (@ARGV) {
-#    print "Arg # $counter : $a\n";
-#    $counter++;
-#}
-#End debugging
-
-# Input argument order
-# 0 Root directory  (includes date and model in path)
-# 1 Region
-# 2 Grid   e.g. d2
-# 3 Time  0 or specific hour (e.g. 1000)
-# 4 Glider type (e.g. LS-4a) - used just for reference
-# 5 Polar adjustment -
-# 6 Polar coefficients (a,b,c)
-# 7 default Thermal sink rate in m/s
-# 8 Thermal multiplier (???)
-# 9 Type - indicate format of following turnpoint list - either 'latlons' or 'turnpts'
-# 10 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
-#     or "1,42.42617,-71.79383,Sterling,2,42.805,-72.003,Jaffrey,..."
-my $summaryJson;
-$summaryJson = "";
-if ($#ARGV < 10) {
-    # $#ARGV is 0 based so really looking for 11 arguments
-    #-----------------description------------------------------------
-    $summaryJson .= "{ \"error\" : \"Calc+Output estimated time along path based on \\\"speed to fly\\\" eqns.";
-    $summaryJson .= "\\n\\t0 = Data directory";
-    $summaryJson .= "\\n\\t1 = Region";
-    $summaryJson .= "\\n\\t2 = Grid";
-    $summaryJson .= "\\n\\t3 = Time eg. 1300 (use single forecast) or 1100x (start task at 1100)";
-    $summaryJson .= "\\n\\t4 = Glider name";
-    $summaryJson .= "\\n\\t5 = Polar factor (% above below weight used when generating polar info ";
-    $summaryJson .= "\\n\\t6 = Polar coefficients (a,b,c)";
-    $summaryJson .= "\\n\\t7 = ThermallingSinkrate(m/s)";
-    $summaryJson .= "\\n\\t8 = ThermalMultiplier";
-    $summaryJson .= "\\n\\t9 = Turnpoint formats - \\\"latlons\\\"  or \\\"turnpts\\\"  used to indicate format of turnpoints below. ";
-    $summaryJson .= "\\n\\t10 = If type  \\\"latlons\\\"  format is: Lat,Lon  pairs , if  \\\"turnpts\\\" then  #(1,2,3), lat, lon, turnpoint name ";
-    $summaryJson .= " \\nInput: Day=-yyyy-mm-dd  Valid.Time=hhmm[x]  ThermalingSink=m/sec Lat / Lon = degrees(Wlon = -) ";
-    $summaryJson .= "\\nValidTime \\\"hhmm\\\" => single datafile time (lst)  \\\"hhmm+\\\" => flight start time (lst) ";
-    $summaryJson .= " \\nOutput: std out  ";
-    $summaryJson .= "\\n eg:  NewEngland/2023-08-11/gfs  NewEngland d2  1000 LS-4a 1.0 \\\"-0.0002,0.0350,-2.1900\\\"1 1 1 latlons \\\"42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383\\\"  ";
-    $summaryJson .= "\\nReminder: This routine requires american unit data file input = do not use for metric data files \\n\"}";
-    print $summaryJson;
-    exit 0;
-}
+#   perl get_estimated_flight_avg.PL  ../NewEngland/2023-08-11/gfs NewEngland  d2 1000x  "LS-4" 1 "-0.00020,0.03500,-2.19000" 0.9092095622654608 1.0 turnpts ",42.42616666666667,-71.79383333333332,Ster,2,43.3705,-72.368,Clar,3,42.100833333333334,-72.03883333333333,Sout,4,42.42616666666667,-71.79383333333332,Ster"
+#  or if using visual debugger
+#   perl -d:ptkdb get_estimated_flight_avg.PL ../NewEngland/2023-08-11/gfs NewEngland  d2 1000x  "LS-4" 1 "-0.00020,0.03500,-2.19000" 0.9092095622654608 1.0 turnpts ",42.42616666666667,-71.79383333333332,Ster,2,43.3705,-72.368,Clar,3,42.100833333333334,-72.03883333333333,Sout,4,42.42616666666667,-71.79383333333332,Ster"
 
 ############ PROGRAM NOTICE AND LICENSE #################################
 #
@@ -112,9 +61,65 @@ if ($#ARGV < 10) {
 ###    vars requires variables to be declared with "my" or fully qualified or imported
 ###    refs generates error if symbolic references uses instead of hard refs
 ###    subs requires subroutines to be predeclared
-#use strict;
+use strict;
 ### To provide aliases for buit-in punctuation variables (p403)
 use English;
+
+##### PAULS - 2017-10-16 BLOCKED if optgroundspd < 0.05 mps (= 0.1 Knot)  [Was <= 0.0] See line 940
+##### PAULS - 2008-08-02 Warnings turned off at lines 900 1025 1039 & 1062 to avoid cluttering logs with errors from sqrt(-ve num) #####
+##### PAULS - 2008-08-03 Can't have -T flag to perl. Opening a file for writing is not allowed - see "man perlsec"
+
+# Eric - Debugging
+#my $total = $#ARGV;
+#print "Number of arguments (0 based): $total \n";
+#my $counter = 0;
+#foreach my $a (@ARGV) {
+#    print "Arg # $counter : $a\n";
+#    $counter++;
+#}
+#End debugging
+
+# Input argument order
+# 0 Root directory  (includes date and model in path)
+# 1 Region
+# 2 Grid   e.g. d2
+# 3 Time  0 or specific hour (e.g. 1000)
+# 4 Glider type (e.g. LS-4a) - used just for reference
+# 5 Polar adjustment -
+# 6 Polar coefficients (a,b,c)
+# 7 default Thermal sink rate in m/s
+# 8 Thermal multiplier (???)
+# 9 Type - indicate format of following turnpoint list - either 'latlons' or 'turnpts'
+# 10 Lat/Long of turnpoints e.g. "42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383"
+#     or "1,42.42617,-71.79383,Sterling,2,42.805,-72.003,Jaffrey,..."
+
+my $summaryJson;
+$summaryJson = "";
+if ($#ARGV < 10) {
+    # $#ARGV is 0 based so really looking for 11 arguments
+    #-----------------description------------------------------------
+    $summaryJson .= "{ \"error\" : \"Calc+Output estimated time along path based on \\\"speed to fly\\\" eqns.";
+    $summaryJson .= "\\n\\t0 = Data directory";
+    $summaryJson .= "\\n\\t1 = Region";
+    $summaryJson .= "\\n\\t2 = Grid";
+    $summaryJson .= "\\n\\t3 = Time eg. 1300 (use single forecast) or 1100x (start task at 1100)";
+    $summaryJson .= "\\n\\t4 = Glider name";
+    $summaryJson .= "\\n\\t5 = Polar factor (% above below weight used when generating polar info ";
+    $summaryJson .= "\\n\\t6 = Polar coefficients (a,b,c)";
+    $summaryJson .= "\\n\\t7 = ThermallingSinkrate(m/s)";
+    $summaryJson .= "\\n\\t8 = ThermalMultiplier";
+    $summaryJson .= "\\n\\t9 = Turnpoint formats - \\\"latlons\\\"  or \\\"turnpts\\\"  used to indicate format of turnpoints below. ";
+    $summaryJson .= "\\n\\t10 = If type  \\\"latlons\\\"  format is: Lat,Lon  pairs , if  \\\"turnpts\\\" then  #(1,2,3), lat, lon, turnpoint name ";
+    $summaryJson .= " \\nInput: Day=-yyyy-mm-dd  Valid.Time=hhmm[x]  ThermalingSink=m/sec Lat / Lon = degrees(Wlon = -) ";
+    $summaryJson .= "\\nValidTime \\\"hhmm\\\" => single datafile time (lst)  \\\"hhmm+\\\" => flight start time (lst) ";
+    $summaryJson .= " \\nOutput: std out  ";
+    $summaryJson .= "\\n eg:  NewEngland/2023-08-11/gfs  NewEngland d2  1000 LS-4a 1.0 \\\"-0.0002,0.0350,-2.1900\\\"1 1 1 latlons \\\"42.42617,-71.79383,42.805,-72.003,42.90133,-72.26983,42.42617,-71.79383\\\"  ";
+    $summaryJson .= "\\nReminder: This routine requires american unit data file input = do not use for metric data files \\n\"}";
+    print $summaryJson;
+    exit 0;
+}
+
+
 ### for non-buffered STDOUT,STDERR ouput:
 select STDERR;
 $| = 1;
@@ -217,6 +222,9 @@ while (defined $latlonargtail && $latlonargtail ne "") {
 
 our $errorMsg = "";
 our @subData = ();
+our $timeLimitHHMM = 9999; # Eric - anything less than 9999 is 1 hr past last forecast
+our $timeLimitSet = 0;     # Eric - set to 1 if already calculated 1 hr past last forecast
+our $terminateTask = 0;    # Eric - set to 1 if non viable leg found
 
 $nleg = $nturnpts - 1;
 
@@ -300,6 +308,9 @@ my %filetimelist;
 my %lslist;
 
 my ($validdayprt, $gooddate);
+my (@wstardata,@blwindspddata, @blwinddirdata, @unsortfiles, @sortfiles,@legDetailValues,@optairspeed_inglide);
+my $wildcard;     ## Debugging vars
+my $inputdatafile;
 
 # Eric GBSC RASP uses explicit dates in directory names
 # Removed  unneeded date logic
@@ -413,7 +424,7 @@ else {
         exit 0;
     }
     ### READ ONE DATA FILE TO SET NNX,NNY
-    #@wstardata     = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
+    #@wstardata = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
     ($errorMsg, @subData) = &zmapxyplotread("${DATADIR}/wstar.1200local.${GRID}.data");
     if ($errorMsg ne "") {
         reportError($errorMsg);
@@ -457,14 +468,19 @@ if ($LVALIDTIME == 0) {
     ### INITIALIZE
     my (@paramwarning0, @paramwarning1);
     #print "VALIDTIME: $VALIDTIME \n";
-    $clocksec = 3600. * substr($VALIDTIME, 0, 2) + 60. * substr($VALIDTIME, 2, 2);
-    #print "clocksec : $clocksec \n";
+    #$clocksec = 3600. * substr($VALIDTIME, 0, 2) + 60. * substr($VALIDTIME, 2, 2);
+    $clocksec = hhmmToSec($VALIDTIME);
+
+    my $startTime = secondsToHHMM($clocksec);
+    print " Starting clocksec: ${clocksec}  HHMM: ${startTime} \n";
     ### FIND INDEX OF TIME IMMEDIATELY _AFTER_ INPUT $VALIDTIME
+    ### e.g. if input is 1400, this should get 1500
     foreach my $param ('wstar', 'blwindspd', 'blwinddir') {
         for (my $ii = 0; $ii <= $#{$filetimelist{$param}}; $ii++) {
             #print " $filetimelist{$param}[$ii]  >? $VALIDTIME \n" ;
             if ($filetimelist{$param}[$ii] > $VALIDTIME) {
                 $posttimeindex{$param} = $ii;
+                #print " $filetimelist{$param}[$ii] \n" ;
                 last;
             }
         }
@@ -486,7 +502,11 @@ if ($LVALIDTIME == 0) {
 
 
             ### set posttimesec large so will never again try to update data
-            $posthhmm{$param} = 9999;
+            ### Eric set task limit to 1 hr (number in hhmm format) past last forecast
+            $timeLimitHHMM = $VALIDTIME + 100;
+            $timeLimitSet = 1;
+            $prehhmm{$param} = $timeLimitHHMM;
+            #$posthhmm{$param} = 9999;
             $prehhmm{$param} = $posthhmm{$param};
             push @paramwarning0, $param;
         }
@@ -537,12 +557,13 @@ if ($LVALIDTIME == 0) {
             $prehhmm{$param} = $filetimelist{$param}[$posttimeindex{$param} - 1];
         }
         ### set pre,post_time clock time
-        $pretimesec{$param} = 3600. * substr($prehhmm{$param}, 0, 2) + 60. * substr($prehhmm{$param}, 2, 2);
-        $posttimesec{$param} = 3600. * substr($posthhmm{$param}, 0, 2) + 60. * substr($posthhmm{$param}, 2, 2);
+        #$pretimesec{$param} = 3600. * substr($prehhmm{$param}, 0, 2) + 60. * substr($prehhmm{$param}, 2, 2);
+        $pretimesec{$param} = hhmmToSec($prehhmm{$param});
+        #$posttimesec{$param} = 3600. * substr($posthhmm{$param}, 0, 2) + 60. * substr($posthhmm{$param}, 2, 2);
+        $posttimesec{$param} = hhmmToSec($posthhmm{$param});
     }
     ### note: arrays @paramwarning0,1 give parameters missing, but currently not printed
-    if ($#paramwarning0 > -1) {$warningfooter .= sprintf "Data unavailable after %s so assumed constant conditions after that time.", $VALIDTIME;}
-    if (defined $paramwarning1[0]) {$warningfooter .= sprintf "Data unavailable before %s so assumed constant at that time.", $filetimelist{$paramwarning1[0]}[$posttimeindex{$paramwarning1[0]}];}
+    if ($#paramwarning0 > -1) {$warningfooter .= sprintf "Task will be deemed unflyable it extends 1 hr past last forecast at %s.\\n", $VALIDTIME;}
 }
 
 
@@ -598,8 +619,7 @@ for ($iturnpt = 0; $iturnpt <= $nleg; $iturnpt++) {
 my ($dummy, $revtrackdegtrue, $blwindspdmps, $blwinddirtrue, $windanglerad);
 my (@tailwindmps, @thermalpct);
 
-### Create summary header JSON
-my ($clockprt, $clockprt2, $clockstr, $clockdash, $clockpr2);
+my ($clockprt);
 
 ## CALC NO-WIND L/D FOR PRINTOUT (Eric - See Reichmann pg 123)
 my ($vloverd, $wloverd, $LoverD);
@@ -650,7 +670,7 @@ my @legDetailKeys = ("leg",
     "optFlightThermalPct");
 my @turnpointDetailsValues = ();
 
-### START OF LOOP OVER ALL TURNPOINTS
+### Define values used for looping over turnpoints and totals for task
 my $totallength = 0;
 my $totalspatialavgclimbratesum = 0;
 my $totalspatialavgtailwindsum = 0;
@@ -676,17 +696,31 @@ my @routedata = ();
 #print "Leg   Seg        XPos         YPos      Dist    Time        Length     ClimbRate       Thermal Strength   TailWind(mps)   Grnd Speed    Thermal%    Seconds \n";
 #printf   " %2d   %3d  %6.2f   %6.2f    %6.0f   %5.0f      %8.0f         %5.2f                  %5.2f           %5.1f       %6.1f       %5.1f      %5.0f \n",$ileg,$i,$xsort[$i],$ysort[$i], $flitedist,$flitetime, $length[$i],$thermallingclimbrate[$i],$thermalstrength[$i],$tailwindmps[$i], $optgroundspeed[$i], $thermalpct[$i], $seconds[$i] ;
 
-LEG:
-for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
-    ### set start,end pts for this leg
-    my $xstart = $xturnpts[$ileg - 1];
-    my $ystart = $yturnpts[$ileg - 1];
-    my $xend = $xturnpts[$ileg];
-    my $yend = $yturnpts[$ileg];
-    ### SET  START,END GRID PT LOCATIONS (FORTRAN INDEXING) - need not be integer
-    #4test: #45deg: $xstart = 4.0 ; $ystart = 4.0 ; $xend = 10.0 ; $yend = 10.0 ;
-    #4test: #225deg: $xstart = 10.0 ;$ystart = 10.0 ;$xend = 4.0 ;$yend = 4.0 ;
 
+### Eric - moved polar calcs out from leg loop. Why there in the first place?
+### CALC OPTIMAL SPEED
+### DO POLAR WEIGHT RATIO WEIGHT ADJUSTMENT
+my $anorm = $apolar / $polarFactor;
+my $bnorm = $bpolar;
+my $cnorm = $cpolar * $polarFactor;
+
+### CONVERT POLAR COEFS TO USE VELOCITY IN m/s
+### *NB* following calcs assume apolar,bpolar,cpolar give NEGATIVE W=m/s for V=km/hr => a,b=negative c=positive ala Reichmann
+### so must convert to coeffs which will give all velocities in m/s
+$anorm = $anorm / ($kmphr2mps * $kmphr2mps);
+$bnorm = $bnorm / $kmphr2mps;
+$cnorm = $cnorm;
+#use_kts: ### TO USE KTS EVERYWHERE
+#use_kts+  $anorm = $apolar ;
+#use_kts+  $bnorm = $bpolar ;
+#use_kts+  $cnorm = $cpolar ;
+### Eric - end of code moved from leg loop
+
+
+### Eric - moved error checking out of main leg loop
+### Yes it is making an additional loop but it makes the main logic
+### more condensed and easier(? - not really) to follow
+for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
     ### DO TURNPOINT VALIDITY TESTS
     if ($xturnpts[$ileg] < 1) {
         reportError("*** ERROR : Turnpoint $iturnpt x extent too small : $xturnpts[$ileg] < 1 ");
@@ -723,25 +757,36 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
             exit 0;
         }
     }
+}
+### Eric - end of error checking out of main leg loop
 
-    ### CALC OPTIMAL SPEED
-    ### DO POLAR WEIGHT RATIO WEIGHT ADJUSTMENT
-    my $anorm = $apolar / $polarFactor;
-    my $bnorm = $bpolar;
-    my $cnorm = $cpolar * $polarFactor;
-    my @optairspeed_inglide;
+###########################################################
+### Eric - Start of all the heavy lifting. There be dragons here.
+###  Loop over turnpoints
+LEG:
+for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
 
+    if ($terminateTask == 1) {
+        my $message = sprintf("No solution");
+        my @legDetailMessageKeys = ("leg",
+            "sptlAvgDistKm",
+            "sptlAvgTailWind",
+            "sptlAvgClimbRate",
+            "message");
+        @legDetailValues = ($ileg, 0, 0, 0, $message);
+        if ($ileg > 1) {$legDetailJson .= ","};
+        $legDetailJson .= keyValuesToJson(\@legDetailMessageKeys, \@legDetailValues);
+        next LEG;
+    }
+    ### set start,end pts for this leg
+    my $xstart = $xturnpts[$ileg - 1];
+    my $ystart = $yturnpts[$ileg - 1];
+    my $xend = $xturnpts[$ileg];
+    my $yend = $yturnpts[$ileg];
+    ### SET  START,END GRID PT LOCATIONS (FORTRAN INDEXING) - need not be integer
+    #4test: #45deg: $xstart = 4.0 ; $ystart = 4.0 ; $xend = 10.0 ; $yend = 10.0 ;
+    #4test: #225deg: $xstart = 10.0 ;$ystart = 10.0 ;$xend = 4.0 ;$yend = 4.0 ;
 
-    ### CONVERT POLAR COEFS TO USE VELOCITY IN m/s
-    ### *NB* following calcs assume apolar,bpolar,cpolar give NEGATIVE W=m/s for V=km/hr => a,b=negative c=positive ala Reichmann
-    ### so must convert to coeffs which will give all velocities in m/s
-    $anorm = $anorm / ($kmphr2mps * $kmphr2mps);
-    $bnorm = $bnorm / $kmphr2mps;
-    $cnorm = $cnorm;
-    #use_kts: ### TO USE KTS EVERYWHERE
-    #use_kts+  $anorm = $apolar ;
-    #use_kts+  $bnorm = $bpolar ;
-    #use_kts+  $cnorm = $cpolar ;
 
     ### DETERMINE CELL BOXES ALONG START->END PATH
     ($nlegpts, @xsort) = &cell_path_intersections($xstart, $ystart, $xend, $yend);
@@ -765,8 +810,16 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
     ### compute % of no solution "blocked" boxes
     $nblocked[$ileg] = 0;
     $nlegboxs[$ileg] = $nlegpts - 1;
+
+    ### Eric - prior code provides a list of grid points for the leg (e.g from start to first turnpoint.
+    ### The following logic iterates over the leg grid points to see if
+    ### soaring condition make it viable for glider to fly from one turnpoint to the next
+
     ### START OF LOOP OVER POINTS ALONG LEG
     for (my $i = 0; $i <= ($nlegpts - 2); $i++) {
+        if ($terminateTask == 1){
+            last;
+        }
         ### set overal totals
         $itotpt += 1;
         ### determine grid box for line between this and next point
@@ -821,9 +874,11 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                     }
                     elsif ($prehhmm{'wstar'} == $posthhmm{'wstar'}) {
                         $wstardata = $posttimedata{'wstar'}[$kk];
+                        #print "wstardata : $wstardata\n";
                     }
                     else {
                         $wstardata = $pretimedata{'wstar'}[$kk] + (($clocksec - $pretimesec{'wstar'}) / ($posttimesec{'wstar'} - $pretimesec{'wstar'})) * ($posttimedata{'wstar'}[$kk] - $pretimedata{'wstar'}[$kk]);
+                        #print "wstardata : $wstardata\n";
                     }
                     if ($wstarmax < $wstardata) {$wstarmax = $wstardata;}
                     #4testprint:  print " $i = $iix $iiy => $kk : $wstarmax $wstardata \n";
@@ -944,6 +999,10 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                     $optgroundspeed[$i] = 0.0;
                     $thermalpct[$i] = 100.;
                     $seconds[$i] = 0.0;
+                    ### Eric - add reason for nonviable task
+                    $warningfooter .= sprintf "Headwind too strong on leg %d.\\n", $ileg;
+                    $terminateTask = 1;
+                    last; # And quit points within leg  loop
                     #4test: print "Wind triangle error => BL wind too strong - $ileg $i $asinarg $gammarad $awind2track_anglerad $blwindspdmps $optavgairspeed \n";
                 }
                 else {
@@ -971,6 +1030,10 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                         $optgroundspeed[$i] = 0.0;
                         $thermalpct[$i] = 100.;
                         $seconds[$i] = 0;
+                        ### Eric - add reason for nonviable task
+                        $warningfooter .= sprintf "Headwind too string on leg %d.\\n", $ileg;
+                        $terminateTask = 1;
+                        last; # And quit points within leg  loop
                         #4test: print "Backward movement => BL wind too strong - $ileg $i $asinarg $gammarad $awind2track_anglerad $blwindspdmps $optavgairspeed \n";
                     }
                     else {
@@ -990,6 +1053,10 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                 $optgroundspeed[$i] = $seconds[$i] = 0.0;
                 $thermalpct[$i] = 100.;
                 $seconds[$i] = 0;
+                ### Eric - add reason for nonviable task
+                $warningfooter .= sprintf "Thermaling climb rate too low on leg %d.\\n", $ileg;
+                $terminateTask = 1;
+                last; # # And quit points within leg  loop
                 #4test: print "Optgroundspeed=0 DENOM<0 - $ileg $i $denom $thermallingclimbrate[$i] \n";
             }
         }
@@ -1000,6 +1067,10 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
             $optgroundspeed[$i] = $seconds[$i] = 0.0;
             $thermalpct[$i] = 100.;
             #4test: print "Optgroundspeed=0 CLIMBRATE<0 - $ileg $i $thermallingclimbrate[$i] \n";
+            ### Eric - add reason for nonviable task
+            $warningfooter .= sprintf "Thermaling climb rate <=0 on leg %d.\\n", $ileg;
+            $terminateTask = 1;
+            last; # And quit points within leg  loop
         }
 
         ### END OF OPTGROUNDSPEED CALC
@@ -1021,6 +1092,22 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
             my @paramwarning;
             $#paramwarning = -1;
             foreach my $param ('wstar', 'blwindspd', 'blwinddir') {
+                #printf "clocksec:  %d    $posttimesec{$param}: %d \n",$clocksec, $posttimesec{$param} ;
+                if ($timeLimitSet == 1 && $clocksec > $posttimesec{$param}) {
+                    ### task is 1 hr past last forecast so call it a day
+                    my $currentHHMM = secondsToHHMM($clocksec);
+                    print "Task 1 hr past last forecast:  clocksec = ${clocksec}  =  HHMM = ${$currentHHMM}";
+                    $nblocked[$ileg]++;
+                    $lsolution[$ileg] = -5;
+                    $optgroundspeed[$i] = $seconds[$i] = 0.0;
+                    $thermalpct[$i] = 100.;
+                    $warningfooter .= sprintf "Task extended 1 hr past last forecast on leg %d.\\n", $ileg;
+                    $terminateTask = 1;
+                    last; # And quit wstar, blwindspd,.. loop
+                }
+                if ($terminateTask == 1){
+                    last;  # quit foreach loop of wstar, blwindspd, blwinddir
+                }
                 if ($clocksec > $posttimesec{$param}) {
                     ### age current data
                     @{$pretimedata{$param}} = @{$posttimedata{$param}};
@@ -1028,28 +1115,41 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                     $pretimesec{$param} = $posttimesec{$param};
                     ### IF LAST, set to constant value by not updating posttimedata & write warning
                     if ($posttimeindex{$param} == $#{$lslist{$param}}) {
+                        #printf "param:   %d posttimeindex: %d   lslist(param): %d\n",   $param,  $posttimeindex{$param}, $#{$lslist{$param}};
                         ### set posttimesec large so will never again try to update data
-                        $posthhmm{$param} = 99999;
-                        $posttimesec{$param} = 99999.;
+                        ### Eric set time limit to 1 hr past last forcast
+                        $timeLimitSet = 1;
+                        $timeLimitHHMM = $posttimeindex{$param} + 100;
+                        $posthhmm{$param} = $timeLimitHHMM;
+                        $posttimesec{$param} = hhmmToSec($timeLimitHHMM);
+
                         push @paramwarning, $param;
                     }
                     else {
                         ### get new data
                         $posttimeindex{$param}++;
-
+                        #printf " posttimeindex{param}: %d \n", $posttimeindex{$param};
                         my $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
 
                         $posthhmm{$param} = $filetimelist{$param}[$posttimeindex{$param}];
-                        $posttimesec{$param} = 3600. * substr($posthhmm{$param}, 0, 2) + 60. * substr($posthhmm{$param}, 2, 2);
+                        $posttimesec{$param} = hhmmToSec($posthhmm{$param});
+                        #$posttimesec{$param} = 3600. * substr($posthhmm{$param}, 0, 2) + 60. * substr($posthhmm{$param}, 2, 2);
+                        #printf " Got new data  $param: %d   posthhmm{param}: %d   posttimesec{param}: %d \n", $param, $posthhmm{$param}, $posttimesec{$param};
                     }
                 }
             }
             ### note: array @paramwarning gives parameters missing, but currently not printed
-            if ($#paramwarning > -1) {$warningfooter .= sprintf "Data unavailable after %s so assumed constant conditions after that time.",
-                $filetimelist{$paramwarning[0]}[$posttimeindex{$paramwarning[0]}];}
+            if ($#paramwarning > -1) {$warningfooter = (sprintf "Task will be deemed unflyable it extends 1 hr past last forecast at %s.\\n",
+                $filetimelist{$paramwarning[0]}[$posttimeindex{$paramwarning[0]}]) . $warningfooter;}
         }
 
-    } ### END OF LOOP OVER POINTS ALONG LEG
+    }
+
+
+    ### END OF LOOP OVER POINTS ALONG LEG
+    ### Eric - Modified logic to break out of loop as soon as hit non viable forecast, i.e. thermals
+    ###  to weak, wind to strong. So the original '%blocked' logic that follows not longer has valid
+    ###  data to calculate (but I am not going to fiddle with removing it)
 
     ###### PRINT LEG RESULTS
     ### CALC LEG SPATIAL AVG
@@ -1132,9 +1232,10 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
         }
         else {
             # PRINT LEG RESULTS WHEN NO OPTIMAL SOLUTION
+            $terminateTask = 1; ### Eric
             $ltotalsolution = 0;
             # compute % of no solution "blocked" boxes
-            $pctblocked = nint(100. * ($nblocked[$ileg] / $nlegboxs[$ileg]));
+            #$pctblocked = nint(100. * ($nblocked[$ileg] / $nlegboxs[$ileg]));
             # legspatialaverageclimbrate now in Kt
             # printf "%2d  %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \n", $ileg, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbrate, '%',$pctblocked ;
             # $flightSummary .=  sprintf("%2d %9s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", $ileg, "", $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, '%', $pctblocked);
@@ -1152,6 +1253,8 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
     }
 
 } ### END OF LOOP OVER ALL TURNPOINTS
+###########################################################
+
 
 # Get totals
 push(@xgridpoints, $xsort[$nlegpts - 1]);
@@ -1193,10 +1296,11 @@ if ($ltotalsolution == 1) {
 else {
     ###### PRINT OVERALL TOTAL RESULTS WHEN NO OPTIMAL SOLUTION
     ### compute % of no solution "blocked" boxes
-    $pctblocked = nint(100. * ($totalblocked / $totallegboxs));
+    #$pctblocked = nint(100. * ($totalblocked / $totallegboxs));
     #$flightSummary .=  sprintf("TOT %8s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", "", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbrate, '%', $pctblocked);
     my @legDetailMessageKeys = ("leg", "sptlAvgDistKm", "sptlAvgTailWind", "sptlAvgClimbRate", "message");
-    @legDetailValues = ("TOT", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, sprintf("No solution\\n%sblocked=%2d", '%', $pctblocked));
+    #@legDetailValues = ("TOT", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, sprintf("No solution\\n%sblocked=%2d", '%', $pctblocked));
+    @legDetailValues = ("TOT", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, sprintf("No solution"));
     $legDetailJson .= "," . keyValuesToJson(\@legDetailMessageKeys, \@legDetailValues) . "]";
 }
 ### PRINT WARNING FOOTER, if any
@@ -1205,7 +1309,7 @@ my @footerKeys = ("message");
 my @footerValues;
 if ($warningfooter ne '') {
     #$flightSummary = $flightSummary . "\\nWARNING: ${warningfooter}";
-    @footerValues = ("WARNING: ${warningfooter}");
+    @footerValues = ("WARNINGS:\\n ${warningfooter}");
     $footerJson .= keyValuesToJson(\@footerKeys, \@footerValues);
     $footerJson .= ","; # Cause you always add following warning
 }
@@ -1275,16 +1379,28 @@ $routeJson = $routeJson . "]";
 $summaryJson = "{\"summary\" : { $headerJson,$footerJson,$turnpointsJson,$legDetailJson, $routeJson }}";
 print $summaryJson;
 
+
+#------------------------- END OF MAIN LOGIC -----------------------------------------------
+
+##########################  SUBROUTINES  ################################
+### Eric - added subroutines
 sub reportError {
     my $errorMsg = $_[0];
     my $errorJson = "{\"summary\" : {  \"error\" : \"$errorMsg\" }}";
     print $errorJson;
 }
 
-#------------------------- END OF MAIN LOGIC -----------------------------------------------
+### Eric convert HHMM to seconds
+sub hhmmToSec {
+    my $hhmm = $_[0];
+    return 3600. * substr($hhmm, 0, 2) + 60. * substr($hhmm, 2, 2)
+}
 
-##########################  SUBROUTINES  ################################
-
+### Eric convert seconds to HHMM
+sub secondsToHHMM{
+    my $seconds = $_[0];
+    return 100 * int($seconds / 3600.) + int(($seconds - 3600. * (int($seconds / 3600.))) / 60.);
+}
 
 ### FIND NEAREST INTEGER
 sub nint {int($_[0] + ($_[0] >= 0 ? 0.5 : -0.5));}
