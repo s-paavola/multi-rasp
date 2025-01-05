@@ -184,9 +184,12 @@ $polarFactor = $ARGV[5]; # adjustment to polar based on 'real' glider weight (em
 
 $polarCoefficients = $ARGV[6]; # a,b,c coefficients to calc glider polar
 
-if ($ARGV[7] =~ m|^([0-9.]+)*kt[s]*$|i)    # default ThermallingSinkrate input units = m/s
-{$thermallingsinkrate = ${1} / ${mps2kt};} #  append kt/kts to change units
-else {$thermallingsinkrate = $ARGV[7];}
+if ($ARGV[7] =~ m|^([0-9.]+)*kt[s]*$|i) {  # default ThermallingSinkrate input units = m/s
+    $thermallingsinkrate = ${1} / ${mps2kt};   #  append kt/kts to change units
+}
+else {
+    $thermallingsinkrate = $ARGV[7];
+}
 
 $thermalmultiplier = $ARGV[8];
 
@@ -224,7 +227,7 @@ our $errorMsg = "";
 our @subData = ();
 our $timeLimitHHMM = 9999; # Eric - anything less than 9999 is 1 hr past last forecast
 our $timeLimitSet = 0;     # Eric - set to 1 if already calculated 1 hr past last forecast
-our $terminateTask = 0;    # Eric - set to 1 if non viable leg found
+our $viableTask = 1;    # Eric -  1 if viable task, set to 0 if conditions not viable for task
 
 $nleg = $nturnpts - 1;
 
@@ -304,12 +307,12 @@ my $m_subgridi2moadcenteri = ($nw_subgridi2moadcenteri - $se_subgridi2moadcenter
 my $m_subgridj2moadcenterj = ($nw_subgridj2moadcenterj - $se_subgridj2moadcenterj) / ($GRID_JMAX - $GRID_JMIN);
 my ($wstardata, $blwindspddata, $blwinddirdata) = (), (), ();
 
-my %filetimelist;
-my %lslist;
+my %filetimelist; # % makes filetimelist a hash array
+my %lslist;       # ditto
 
 my ($validdayprt, $gooddate);
-my (@wstardata,@blwindspddata, @blwinddirdata, @unsortfiles, @sortfiles,@legDetailValues,@optairspeed_inglide);
-my $wildcard;     ## Debugging vars
+my (@wstardata, @blwindspddata, @blwinddirdata, @unsortfiles, @sortfiles, @legDetailValues, @optairspeed_inglide);
+my $wildcard; ## Debugging vars
 my $inputdatafile;
 
 # Eric GBSC RASP uses explicit dates in directory names
@@ -372,6 +375,7 @@ if ($LVALIDTIME == 1) {
     #print ("wstardata : @wstardata \nblwindspddata : @blwindspddata \n blwinddirdata : @blwinddirdata");
 }
 else {
+    #$LVALIDTIME = 0
     ### MULTI-TIME CASE, READ NON-ARCHIVE DATA
     ### SET DATAFILE & TIME LISTS
     # Need to ensure ALL files relate to correct date: DST change can leave old files around
@@ -472,7 +476,7 @@ if ($LVALIDTIME == 0) {
     $clocksec = hhmmToSec($VALIDTIME);
 
     my $startTime = secondsToHHMM($clocksec);
-    print " Starting clocksec: ${clocksec}  HHMM: ${startTime} \n";
+    #print " Starting clocksec: ${clocksec}  HHMM: ${startTime} \n";
     ### FIND INDEX OF TIME IMMEDIATELY _AFTER_ INPUT $VALIDTIME
     ### e.g. if input is 1400, this should get 1500
     foreach my $param ('wstar', 'blwindspd', 'blwinddir') {
@@ -493,13 +497,11 @@ if ($LVALIDTIME == 0) {
             ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
             if ($errorMsg ne "") {
                 reportError($errorMsg);
-
                 exit 0;
             }
             else {
                 @{$posttimedata{$param}} = @subData;
             }
-
 
             ### set posttimesec large so will never again try to update data
             ### Eric set task limit to 1 hr (number in hhmm format) past last forecast
@@ -563,7 +565,7 @@ if ($LVALIDTIME == 0) {
         $posttimesec{$param} = hhmmToSec($posthhmm{$param});
     }
     ### note: arrays @paramwarning0,1 give parameters missing, but currently not printed
-    if ($#paramwarning0 > -1) {$warningfooter .= sprintf "Task will be deemed unflyable it extends 1 hr past last forecast at %s.\\n", $VALIDTIME;}
+    if ($#paramwarning0 > -1) {$warningfooter .= sprintf "Task will be deemed nonviable if it extends 1 hr past last forecast at %s.\\n", $VALIDTIME;}
 }
 
 
@@ -627,33 +629,7 @@ $vloverd = sqrt($cpolar / $apolar);                                      # in km
 $wloverd = $apolar * $vloverd * $vloverd + $bpolar * $vloverd + $cpolar; # negative, in m/s (Eric - sink rate at best glide speed)
 $LoverD = (-0.2777777777 * $vloverd) / $wloverd;                         # convert v to m/s and allow for negative w (Eric - Max L/D)
 
-#my $flightSummary = "";
-my $headerJson = "\"header\": ";
-my @headerKeys = ("valid", "startTime",
-    "region", "glider", "maxLd", "polarSpeedAdjustment",
-    "thermalStrengthMultiplier",
-    "thermalingSinkRate", "units");
-my $thermalingSinkRateInKts = sprintf "%3.2f", ($thermallingsinkrate * 3.28084 * 60.0);
-my @headerValues = ($validdayprt, ${VALIDTIME} . "local", $REGION, $glider,
-    $LoverD, $polarFactor, $thermalmultiplier, $thermalingSinkRateInKts, "ft/sec");
 
-$headerJson .= keyValuesToJson(\@headerKeys, \@headerValues);
-
-my $turnpointsJson = "\"routeTurnpoints\": [";
-my @turnpointKeys = ("number", "name", "lat", "lon");
-my @turnpointValues;
-for (my $i = 0; $i <= $nleg; $i++) {
-    if ($i > 0) {$turnpointsJson = $turnpointsJson . ",";}
-    if (defined $adesc[0]) {
-        @turnpointValues = ($atp[$i], $adesc[$i], $alatpts[$i], $alonpts[$i]);
-    }
-    else {
-        @turnpointValues = ($atp[$i], "   ", $alatpts[$i], $alonpts[$i]);
-    }
-    $turnpointsJson = $turnpointsJson . keyValuesToJson(\@turnpointKeys, \@turnpointValues);
-
-}
-$turnpointsJson = $turnpointsJson . "]";
 
 my $legDetailJson = " \"legDetails\" : [";
 my @legDetailKeys = ("leg",
@@ -766,8 +742,8 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
 LEG:
 for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
 
-    if ($terminateTask == 1) {
-        my $message = sprintf("No solution");
+    if ($viableTask == 0) {
+        my $message = sprintf("Not viable");
         my @legDetailMessageKeys = ("leg",
             "sptlAvgDistKm",
             "sptlAvgTailWind",
@@ -817,7 +793,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
 
     ### START OF LOOP OVER POINTS ALONG LEG
     for (my $i = 0; $i <= ($nlegpts - 2); $i++) {
-        if ($terminateTask == 1){
+        if ($viableTask == 0) {
             last;
         }
         ### set overal totals
@@ -915,18 +891,19 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
         ### due to using meteorological convention for direction, use positive cosine to get tailwind
         ### USE WIND VALUE
         if ($LVALIDTIME == 1) {
+            # single time case
             # constant time
             $blwindspdmps = $blwindspddata[$kgridptafter] / $mps2kt;
             $blwinddirtrue = $blwinddirdata[$kgridptafter];
         }
         elsif ($prehhmm{'wstar'} == $posthhmm{'wstar'}) {
+            #mult time case
             $blwindspdmps = $posttimedata{'blwindspd'}[$kgridptafter] / $mps2kt;
             $blwinddirtrue = $posttimedata{'blwinddir'}[$kgridptafter];
         }
         else {
             # start time
             $blwindspdmps = ($pretimedata{'blwindspd'}[$kgridptafter] + (($clocksec - $pretimesec{'blwindspd'}) / ($posttimesec{'blwindspd'} - $pretimesec{'blwindspd'})) * ($posttimedata{'blwindspd'}[$kgridptafter] - $pretimedata{'blwindspd'}[$kgridptafter])) / $mps2kt;
-
             # print "A - blwindspd = $blwindspdmps " .
             # " pretimedata = $pretimedata{'blwindspd'}[$kgridptafter]" .
             # " clocksec = $clocksec " .
@@ -948,8 +925,12 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
             # "\n";
         }
         ### *NB* $revtrackdegtrue defined in "meteorological" sense, i.e. in direction _opposite_ to vector, so can be compared to tailwind
+
         $windanglerad = $DEG2RAD * ($blwinddirtrue - $revtrackdegtrue);
         $tailwindmps[$i] = $blwindspdmps * cos($windanglerad);
+
+        #print "ileg: $ileg i:$i  blwinddirtrue: $blwinddirtrue revtrackdegtrue: $revtrackdegtrue windanglerad: $windanglerad tailwindmps[i]: $tailwindmps[$i] \n";
+
         #4testprint: print "$ileg $i TRACK,Wad=INDr $revtrackdegtrue $blwinddirtrue => $tailwindmps[$i] \n" ;
         #4test: print "TAIL/CROSSWIND(m/s) = $ileg $i $tailwindmps[$i] m/s <= $blwindspddata[$kgridptafter] kt @ $blwinddirdata[$kgridptafter] vs $dxtrack $dytrack $revtrackdegtrue \n" ;
 
@@ -957,28 +938,42 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
         ### use speed to fly eqn based on thermalling climb rate
         my ($denom, $optavgairspeed, $awind2track_anglerad, $gammarad);
         if ($thermallingclimbrate[$i] > 0) {
-            my $sqrtarg = ($cnorm - $thermallingclimbrate[$i]) / $anorm;
-            $optairspeed_inglide[$i] = sqrt($sqrtarg);
+            my $sqrtarg = ($cnorm - $thermallingclimbrate[$i]) / $anorm;  # Reichmann pg 124 eq VI part 1
+            $optairspeed_inglide[$i] = sqrt($sqrtarg);    # Reichmann pg 124 eq VI part 2
+            # denom below is denominator  Reichmann pg 124 eq VI part 3
             $denom = 2. * ${thermallingclimbrate [ $i ]} - 2. * ${cnorm} - ${bnorm} * ${optairspeed_inglide [ $i ]};
-            if ($denom > 0) {
+            if ($denom > 0) {   # if negative denominator means you would get negative speed to fly - aint gonna happen
+                # So if here you will have positive optimal speed to fly
+                # Finally finish equation VI to get optimum cruise speed
                 $optavgairspeed = ((${thermallingclimbrate [ $i ]} * $optairspeed_inglide[$i]) / $denom);
                 #use_kts: ### TO USE KTS EVERYWHERE
                 #use_kts+ $optavgairspeed = ( ( ${thermallingclimbrate[$i]} * $optairspeed_inglide[$i] ) / $denom ) ;
                 $thermalpct[$i] = 100. * (1. - ($optavgairspeed / $optairspeed_inglide[$i]));
-
+                #print " thermallingclimbrate [i] :${thermallingclimbrate [ $i ]}   optairspeed_inglide [i]: ${optairspeed_inglide [ $i ]}  thermalpct[i]:$thermalpct[$i] \n";
                 ### DO WIND TRIANGLE CALC to get track ground speed - for triangle with two known sides (speeds) and known non-enclosed angle
                 ### START OF TESTED WIND TRIANGLE CALC
                 ### ensure angle alpha=$wind2track_anglerad has range 0 to PI
                 ### *NB* $revtrackdegtrue defined in "meteorological" sense, i.e. in direction _opposite_ to vector, so can be compared to tailwind
                 $awind2track_anglerad = abs($DEG2RAD * ($blwinddirtrue - $revtrackdegtrue));
-                if ($awind2track_anglerad > $PI) {$awind2track_anglerad = $TWOPI - $awind2track_anglerad;}
+                #print "ileg: $ileg i:$i  thermallingclimbrate[i]:${thermallingclimbrate [ $i ]}  sqrtarg : $sqrtarg   blwinddirtrue: $blwinddirtrue revtrackdegtrue:$revtrackdegtrue  awind2track_anglerad: $awind2track_anglerad \n";
+                if ($awind2track_anglerad > $PI) {
+                    $awind2track_anglerad = $TWOPI - $awind2track_anglerad;
+                    #print "ileg: $ileg i:$i   awind2track_anglerad > PI so recalced  awind2track_anglerad:$awind2track_anglerad \n";
+                }
                 #4test: print "blwindspdmps = $blwindspdmps blwinddirtrue  $blwinddirtrue  revtrackdegtrue $revtrackdegtrue AWIND2TRACK_ANGLERAD= $awind2track_anglerad \n" ;
+                my $sin_awind2track_anglerad = sin($awind2track_anglerad);
+                #print "ileg: $ileg i:$i  sin(awind2track_anglerad): $sin_awind2track_anglerad\n";
 
                 my $asinarg = $blwindspdmps * sin($awind2track_anglerad) / $optavgairspeed;
+                #print "ileg: $ileg i: $i blwindspdmps:$blwindspdmps optavgairspeed: $optavgairspeed asinarg: $asinarg \n";
+
                 ### always use smaller angle solution (between track and airspeed bearing) (=gamma1)
 
                 # $gammarad = atan2($asinarg, sqrt(1 - $asinarg*$asinarg)); # An alternative, but asin works when this doesn't ???
                 $gammarad = asin($asinarg);
+                #print "ileg: $ileg i: $i   gammarad: $gammarad \n\n";
+
+
                 ### tests to ensure that my thinking/logic is correct
                 if ($asinarg < 0.0) {
                     reportError("ERROR STOP - asinarg = $asinarg < 0 ");
@@ -993,17 +988,21 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                     exit 0;
                 }
                 if ($asinarg > 1.0) {
-                    ### BLOCKED - Wind triangle error => BL wind too strong
+                    ### BLOCKED - Wind triangle error => BL wind too strong - (Eric - not necessarily)
                     $nblocked[$ileg]++;
                     $lsolution[$ileg] = -4;
                     $optgroundspeed[$i] = 0.0;
                     $thermalpct[$i] = 100.;
                     $seconds[$i] = 0.0;
-                    ### Eric - add reason for nonviable task
-                    $warningfooter .= sprintf "Headwind too strong on leg %d.\\n", $ileg;
-                    $terminateTask = 1;
+                    ### Eric - add reason for nonviable task - original 'Headwind too strong' is incorrect
+                    ### If also could be thermallingclimbrate decreased which caused optavgairspeed speed to decrease
+                    ### which caused $asinarg > 1 (but I still can't quite wrap my head around this value)
+                    #$warningfooter .= sprintf "Headwind too strong on leg %d.\\n", $ileg;
+                    my $time = secondsToHHMM($clocksec);
+                    $warningfooter .= sprintf "Unfavorable conditions by %s on leg %d make task nonviable. (You may be able to fly around unfavorable local conditions.)\\n", $time, $ileg, ;
+                    $viableTask = 0;
+                    #print "Wind triangle error => BL wind too strong - $ileg $i $asinarg $gammarad $awind2track_anglerad $blwindspdmps $optavgairspeed \n";
                     last; # And quit points within leg  loop
-                    #4test: print "Wind triangle error => BL wind too strong - $ileg $i $asinarg $gammarad $awind2track_anglerad $blwindspdmps $optavgairspeed \n";
                 }
                 else {
                     my $betarad = $PI - ($awind2track_anglerad + $gammarad);
@@ -1031,8 +1030,9 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                         $thermalpct[$i] = 100.;
                         $seconds[$i] = 0;
                         ### Eric - add reason for nonviable task
-                        $warningfooter .= sprintf "Headwind too string on leg %d.\\n", $ileg;
-                        $terminateTask = 1;
+                        my $time = secondsToHHMM($clocksec);
+                        $warningfooter .= sprintf "Poor thermal strength or headwind too strong at %s on leg %d.\\n", $time, $ileg;
+                        $viableTask = 0;
                         last; # And quit points within leg  loop
                         #4test: print "Backward movement => BL wind too strong - $ileg $i $asinarg $gammarad $awind2track_anglerad $blwindspdmps $optavgairspeed \n";
                     }
@@ -1054,8 +1054,9 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                 $thermalpct[$i] = 100.;
                 $seconds[$i] = 0;
                 ### Eric - add reason for nonviable task
-                $warningfooter .= sprintf "Thermaling climb rate too low on leg %d.\\n", $ileg;
-                $terminateTask = 1;
+                my $time = secondsToHHMM($clocksec);
+                $warningfooter .= sprintf "Thermaling climb rate too low at %s on leg %d.\\n", $time, $ileg;
+                $viableTask = 0;
                 last; # # And quit points within leg  loop
                 #4test: print "Optgroundspeed=0 DENOM<0 - $ileg $i $denom $thermallingclimbrate[$i] \n";
             }
@@ -1068,8 +1069,9 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
             $thermalpct[$i] = 100.;
             #4test: print "Optgroundspeed=0 CLIMBRATE<0 - $ileg $i $thermallingclimbrate[$i] \n";
             ### Eric - add reason for nonviable task
-            $warningfooter .= sprintf "Thermaling climb rate <=0 on leg %d.\\n", $ileg;
-            $terminateTask = 1;
+            my $time = secondsToHHMM($clocksec);
+            $warningfooter .= sprintf "Thermaling climb rate too low at %s on leg %d.\\n",  $time, $ileg;
+            $viableTask = 0;
             last; # And quit points within leg  loop
         }
 
@@ -1088,6 +1090,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
         $flitetime += $seconds[$i];
         ###- UPDATE CLOCK SECS & GET NEW DATA IF NEED BE
         if ($LVALIDTIME == 0) {
+            #multitime case
             $clocksec += $seconds[$i];
             my @paramwarning;
             $#paramwarning = -1;
@@ -1096,17 +1099,17 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                 if ($timeLimitSet == 1 && $clocksec > $posttimesec{$param}) {
                     ### task is 1 hr past last forecast so call it a day
                     my $currentHHMM = secondsToHHMM($clocksec);
-                    print "Task 1 hr past last forecast:  clocksec = ${clocksec}  =  HHMM = ${$currentHHMM}";
+                    #print "Task 1 hr past last forecast:  clocksec = ${clocksec}  =  HHMM = ${$currentHHMM}";
                     $nblocked[$ileg]++;
                     $lsolution[$ileg] = -5;
                     $optgroundspeed[$i] = $seconds[$i] = 0.0;
                     $thermalpct[$i] = 100.;
                     $warningfooter .= sprintf "Task extended 1 hr past last forecast on leg %d.\\n", $ileg;
-                    $terminateTask = 1;
+                    $viableTask = 0;
                     last; # And quit wstar, blwindspd,.. loop
                 }
-                if ($terminateTask == 1){
-                    last;  # quit foreach loop of wstar, blwindspd, blwinddir
+                if ($viableTask == 0) {
+                    last; # quit foreach loop of wstar, blwindspd, blwinddir
                 }
                 if ($clocksec > $posttimesec{$param}) {
                     ### age current data
@@ -1130,6 +1133,12 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
                         $posttimeindex{$param}++;
                         #printf " posttimeindex{param}: %d \n", $posttimeindex{$param};
                         my $inputdatafile = "${DATADIR}/${param}.${filetimelist {$param}[ $posttimeindex{$param} ]}local.${GRID}.data";
+                        ($errorMsg, @subData) = &zmapxyplotread($inputdatafile);
+                        if ($errorMsg != "") {
+                            reportError($errorMsg);
+                            exit 0;
+                        }
+                        @{$posttimedata{$param}} = @subData;
 
                         $posthhmm{$param} = $filetimelist{$param}[$posttimeindex{$param}];
                         $posttimesec{$param} = hhmmToSec($posthhmm{$param});
@@ -1232,7 +1241,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
         }
         else {
             # PRINT LEG RESULTS WHEN NO OPTIMAL SOLUTION
-            $terminateTask = 1; ### Eric
+            $viableTask = 0; ### Eric
             $ltotalsolution = 0;
             # compute % of no solution "blocked" boxes
             #$pctblocked = nint(100. * ($nblocked[$ileg] / $nlegboxs[$ileg]));
@@ -1240,7 +1249,7 @@ for (my $ileg = 1; $ileg <= $#xturnpts; $ileg++) {
             # printf "%2d  %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \n", $ileg, $legkm, $legspatialavgtailwindkt, $legspatialavgclimbrate, '%',$pctblocked ;
             # $flightSummary .=  sprintf("%2d %9s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", $ileg, "", $legkm, $legspatialavgtailwindkt, $legspatialavgclimbratekt, '%', $pctblocked);
             ##my $message = sprintf("   NO SOLN    %sblocked=%2d ", '%', $pctblocked);
-            my $message = sprintf("No solution");
+            my $message = sprintf("Not viable");
             my @legDetailMessageKeys = ("leg",
                 "sptlAvgDistKm",
                 "sptlAvgTailWind",
@@ -1300,9 +1309,38 @@ else {
     #$flightSummary .=  sprintf("TOT %8s %4.0f %4.0f %4.1f   NO SOLN    %sblocked=%2d \\n", "", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbrate, '%', $pctblocked);
     my @legDetailMessageKeys = ("leg", "sptlAvgDistKm", "sptlAvgTailWind", "sptlAvgClimbRate", "message");
     #@legDetailValues = ("TOT", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, sprintf("No solution\\n%sblocked=%2d", '%', $pctblocked));
-    @legDetailValues = ("TOT", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, sprintf("No solution"));
+    @legDetailValues = ("TOT", $totalkm, $totalspatialavgtailwindkt, $totalspatialavgclimbratekt, sprintf("Not viable"));
     $legDetailJson .= "," . keyValuesToJson(\@legDetailMessageKeys, \@legDetailValues) . "]";
 }
+
+### Eric - assemble JSON reply to client
+my $headerJson = "\"header\": ";
+my @headerKeys = ("viableTask","valid", "startTime",
+    "region", "glider", "maxLd", "polarSpeedAdjustment",
+    "thermalStrengthMultiplier",
+    "thermalingSinkRate", "units");
+my $thermalingSinkRateInKts = sprintf "%3.2f", ($thermallingsinkrate * 3.28084 * 60.0);
+my @headerValues = ($viableTask , $validdayprt, ${VALIDTIME} . "local", $REGION, $glider,
+    $LoverD, $polarFactor, $thermalmultiplier, $thermalingSinkRateInKts, "ft/sec");
+
+$headerJson .= keyValuesToJson(\@headerKeys, \@headerValues);
+
+my $turnpointsJson = "\"routeTurnpoints\": [";
+my @turnpointKeys = ("number", "name", "lat", "lon");
+my @turnpointValues;
+for (my $i = 0; $i <= $nleg; $i++) {
+    if ($i > 0) {$turnpointsJson = $turnpointsJson . ",";}
+    if (defined $adesc[0]) {
+        @turnpointValues = ($atp[$i], $adesc[$i], $alatpts[$i], $alonpts[$i]);
+    }
+    else {
+        @turnpointValues = ($atp[$i], "   ", $alatpts[$i], $alonpts[$i]);
+    }
+    $turnpointsJson = $turnpointsJson . keyValuesToJson(\@turnpointKeys, \@turnpointValues);
+
+}
+$turnpointsJson = $turnpointsJson . "]";
+
 ### PRINT WARNING FOOTER, if any
 my $footerJson = "\"footers\": [";
 my @footerKeys = ("message");
@@ -1397,7 +1435,7 @@ sub hhmmToSec {
 }
 
 ### Eric convert seconds to HHMM
-sub secondsToHHMM{
+sub secondsToHHMM {
     my $seconds = $_[0];
     return 100 * int($seconds / 3600.) + int(($seconds - 3600. * (int($seconds / 3600.))) / 60.);
 }
