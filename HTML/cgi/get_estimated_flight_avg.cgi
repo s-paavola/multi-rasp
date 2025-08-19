@@ -4,7 +4,11 @@
 ### Eric - Modified from original get_rasptrackavg for GBSC RASP  - return JSON containing route
 ###
 ### curl 'http://192.168.1.6/cgi/get_estimated_flight_avg.cgi?region=NewEngland&date=2023-08-11&model=gfs&grid=d2&time=1300&glider=206%20Hornet&polarFactor=1.0&polarCoefficients=-0.0002%2C0.0244%2C-1.4700&tsink=1.0&tmult=1.0&turnpts=1%2C42.42616666666667%2C-71.7938333333333%2CSter%2C2%2C42.805%2C-72.00283333333333%2CJaff%2C3%2C42.100833333333334%2C-72.03883333333333%2CSout%2C4%2C42.42616666666667%2C-71.79383333333332%2CSter'
-################################################################################
+###
+### Call from web browser
+###  http://127.0.0.1/cgi/get_estimated_flight_avg.cgi?region=NewEngland&date=2023-08-11&model=gfs&grid=d2&time=1300x&glider=LS-4&polarFactor=1.0&polarCoefficients=-0.00016%2C0.02809%2C-1.85078&tsink=0.8799812524753069&tmult=1.0&turnpts=1%2C42.425%2C-71.79111666666667%2C74St%2C2%2C43.1266666%2C-72.40333%2CDrew%2C3%2C43.6047667%2C-72.82%2C35Ki%2C4%2C42.425%2C-71.7911166%2C74St
+###
+########################################################################
 #print "Content-type: text/html\n\n${headerline}";
 print "Content-type:application/json \n\n";
 
@@ -34,6 +38,7 @@ use warnings FATAL => 'all';
 use CGI::Carp qw(fatalsToBrowser);
 use CGI qw(:standard);
 use JSON;
+use Scalar::Util 'tainted';
 
 my $PROGRAM = 'get_rasptrackavg_cgi.cgi';
 my $routeData = "";
@@ -74,7 +79,7 @@ if (defined $tsink && $tsink =~ m|^([0-9.mkts]*)$|) {$tsink = $1;}
 if (defined $tmult && $tmult =~ m|^([0-9.]*)$|) {$tmult = $1;}
 if (defined $latlons && $latlons =~ m|^([0-9,.-]*)$|) {$latlons = $1;}
 #if ( defined $turnpts && $turnpts =~ /^([A-Z][A-Z][A-Z0-9],.*)/ )        { $turnpts     = $1 ; }
-if (defined $turnpts && $turnpts =~ m|^((([0-9],([0-9.-]*),([0-9.-]*),[A-Za-z]([A-Za-z0-9\s\-]{0,3})*),?)*)$|) {$turnpts = $1;}
+if (defined $turnpts && $turnpts =~ m|^((([0-9],([0-9.-]*),([0-9.-]*),[0-9A-Za-z]([A-Za-z0-9\s\-]{0,3})*),?)*)$|) {$turnpts = $1;}
 
 #### ALLOW DEFAULTS FOR CERTAIN PARAMETERS
 if (!defined $polarFactor || $polarFactor eq '') {$polarFactor = '1';}
@@ -109,13 +114,28 @@ $dataDir = join "/", $rasp_basedir, $region, $date, $model;
 if (defined $turnpts) {
     $latlons = $turnpts;
 }
+if (tainted($dataDir)) { print "The variable \$dataDir is tainted.\n"}
+if (tainted($region)) { print "The variable \$region is tainted.\n"}
+if (tainted($grid)) { print "The variable \$grid is tainted.\n"}
+if (tainted($validtime)) { print "The variable \$validtime is tainted.\n"}
+if (tainted($polarFactor)) { print "The variable \$polarFactor is tainted.\n"}
+if (tainted($polarCoefficients)) { print "The variable \$polarCoefficients is tainted.\n"}
+if (tainted($tsink)) { print "The variable \$tsink is tainted.\n"}
+if (tainted($tmult)) { print "The variable \$tmult is tainted.\n"}
+if (tainted($type)) { print "The variable \$type is tainted.\n"}
+if (tainted($latlons)) { print "The variable \$latlons is tainted.\n"}
+if (tainted($turnpts)) { print "The variable \$turnpts is tainted.\n"}
+if (tainted($EXTRACTSCRIPT)) { print "The variable \$EXTRACTSCRIPT is tainted.\n"}
 
-my @args = ($dataDir, $region, $grid, $validtime, $glider, $polarFactor, $polarCoefficients, $tsink, $tmult, $type, $latlons);
-#$routeData = `$SCRIPTDIR/get_estimated_flight_avg.PL  $dataDir $region  $grid $validtime  $glider  $polarFactor $polarCoefficients  $tsink  $tmult  $type $latlons`;
+
+
+my @args = ($dataDir, $region, $grid, $validtime, $glider, $polarFactor, $polarCoefficients, $tsink, $tmult, $type, $turnpts);
+#$routeData = "${SCRIPTDIR}/get_estimated_flight_avg.PL  $dataDir $region  $grid $validtime  $glider  $polarFactor $polarCoefficients  $tsink  $tmult  $type $latlons \n";
+#print "$routeData \n";
+#print "$EXTRACTSCRIPT \n";
 system($EXTRACTSCRIPT, @args);
 
 #print "Finished get_estimated_flight_avg.cgi";
-#print $routeData;
 
 
 sub reportError {
