@@ -186,6 +186,12 @@ sub tryHttps {
 	    print "Error: ", status_message($response), "\n  $url\n";
             last;
 	}
+	my $tail = `tail -c 4 $targetDir/$file`;
+	if ("$tail" ne "7777")
+	{
+	    print "Retry $url\n";
+	    last;
+	}
         my $time = `/usr/bin/date +%H:%M:%S`;
         chomp $time;
         print "   $time: Downloaded $file\n";
