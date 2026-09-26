@@ -20,7 +20,7 @@ logFile=`date +LOG/%FT%T.log`
 bin/GM.pl $* >& $logFile
 
 # check for expected end and no failures
-fail=`egrep -c "failure|file length" $logFile`
+fail=`grep -E -c "failure|file length" $logFile`
 tail -1 $logFile | grep -q 'Elapsed time was'
 if [ $? -ne 0 -o $fail -ne 0 ]; then
     # email results

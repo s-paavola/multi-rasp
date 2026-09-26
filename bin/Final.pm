@@ -20,6 +20,7 @@ use Cwd;
 has 'HTMLdir' =>    ( is => 'ro', isa => 'Str', required => 1 );
 has 'AirspaceFiles' => ( is => 'ro', isa => 'ArrayRef' );
 has 'AirspaceBaseUrl' => ( is => 'ro', isa => 'Str' );
+has 'Airspaces' =>  ( is => 'ro', isa => 'ArrayRef' );
 has 'InitialRegion' => ( is => 'ro', isa => 'Str' );
 has 'Server' =>     ( is => 'ro', isa => 'Maybe[Str]' );
 has 'ServerDir' =>  ( is => 'ro', isa => 'Maybe[Str]' );
@@ -95,6 +96,14 @@ sub BUILD {
 	    }
 	}
     }
+    # Upload geoJSON files
+    for (@{$self->Airspaces})
+    {
+	for (%$_{"files"}->@*)
+	{
+	    $self->SendModified->enqueue( "$_" );
+	}
+    }
 }
 
 # Initialize daysStatus
@@ -116,8 +125,11 @@ sub _buildDaysStatus
 	baseUrl => $self->AirspaceBaseUrl,
 	files => $self->AirspaceFiles
     };
+    my $airspaces = $self->Airspaces;
+
     $ret->{airspace} = shared_clone($airspace);
     $ret->{initialRegion} = $self->InitialRegion;
+    $ret->{airspaces} = shared_clone($airspaces);
     return $ret;
 }
 
@@ -561,11 +573,13 @@ sub _sendSftpFiles
 	$sftp->mput([
 		join ("/", $self->HTMLdir, $plot->plotDir, "namelist.wps"),
 		join ("/", $self->HTMLdir, $plot->plotDir, "*${time}local*")
-	    ], $plot->plotDir);
+	    ], $plot->plotDir)
+	    or print "data: ", $sftp->error, "\n";
 	my $statDir = join("/", $region, $date, "status.json");
 	$sftp->put( join("/", $self->HTMLdir, $statDir), $statDir)
-	    or print "status.json: ", $sftp->error, "\n";
-	$sftp->put( join("/", $self->HTMLdir, "current.json"), "current.json");
+	    or print "$statDir: ", $sftp->error, "\n";
+	$sftp->put( join("/", $self->HTMLdir, "current.json"), "current.json")
+	    or print "current.json: ", $sftp->error, "\n";
     }
 }
 

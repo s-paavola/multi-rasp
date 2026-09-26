@@ -19,6 +19,16 @@ our @airspaceFiles = ( "CLASS_B.kmz", "CLASS_C.kmz", "CLASS_D.kmz",
 ### base URL for airspace files - can be empty if co-located
 our $airspaceBaseUrl = "";
 
+### New airspace definition - support geoJSON files
+our @airspaces = (
+    {
+	### list of geoJSON files
+	files    => [ "airspace.geojson", ],
+	### baseURL for these files - can be emptry
+	baseUrl  => ""
+    }
+);
+
 ### Initial region to display if region not provided as query parameter.
 ### If this parameter not supplied, the first region alphabetically
 ### will be used.
@@ -40,7 +50,7 @@ our $initialRegion = "NewEngland";
 #our $ServerDir = ".";
 our $Server = "soargbsc.net";
 our $ServerLogin = "rasp";
-our $ServerDir = "htdocs";
+our $ServerDir = "rasp";
 our $Mode = "sftp";
 our $Today = "NewEngland/date/nam/experimental1.1400local.d2.body.png";
 1.;

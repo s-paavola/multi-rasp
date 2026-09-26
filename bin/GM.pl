@@ -214,6 +214,7 @@ our $plotThreadCounter :shared = $numPlotThreads;
 our $ADMIN_EMAIL_ADDRESS;
 our @airspaceFiles;
 our $airspaceBaseUrl = "";
+our @airspaces;
 our $initialRegion = "";
 our $GRIB_BASE = "GRIB";
 our $Server;
@@ -256,6 +257,7 @@ my $final = Final->new(
     HTMLdir => "HTML",
     AirspaceFiles => \@airspaceFiles,
     AirspaceBaseUrl => $airspaceBaseUrl,
+    Airspaces => \@airspaces,
     InitialRegion => $initialRegion,
     Server => $Server,
     ServerDir => $ServerDir,
@@ -356,7 +358,7 @@ sub runJobs {
                     if ( -f $try->wrfFile)
                     {
                         # Check if wrf still writing file
-                        qx(lsof | grep -q $wrfFile);
+                        qx(lsof /run/user/`id --user` | grep -q $wrfFile);
                         if ($? != 0)
                         {
                             # Nope - run it
