@@ -22,15 +22,15 @@ let plotWasCentered = false;    // True if plot was previously centered
 let map;                        // Google map reference
 let zoom = 7;                   // initial zoom
 let overlay;                    // Overlay object reference
-let airspaceFiles = [];		// array of airspace file names (.kmz/.kml)
-let airspaceBaseUrl;		// airspace base url
-let airspace = [];		// array of airspace layers
+let airspaces = [];		// array of airspace structs
+let airspaceLayers = [];	// array of airspace layers
 let initialRegion;		// initial region to display
 let markerArray = [];
 let setCenter;                  // LatLng object for desired center
 let bounds;                     // Google bounds object
 let infoArray = [];             // popup info window
 let wasLong = false;            // Tracks whether left-click was long
+let infoWindow;			// Window to display airspace name
 
 // Opacity globals
 let opacity = 50;               // initial value
@@ -47,15 +47,28 @@ async function getRASPoverlay() {
 /*
  * Initialization
  */
-function initIt()
-{
+function initIt() {
     getRASPoverlay();
     setSize();
 
-    map = newMap();
+    newMap();
+    infoWindow = new google.maps.InfoWindow();
 
     getURL("current.json", baseDataAndMenu)
     window.onresize = function() {setSize();}
+
+    // Enable mouseover on airspace
+    map.data.addListener('mouseover', function(event) {
+	const featureName = event.feature.getProperty('name');
+	infoWindow.setContent(`<div><strong>${featureName}</strong></dev>`);
+	infoWindow.setPosition(event.latLng);
+	infoWindow.open(map);
+    });
+
+    // Close infoWindow when mouse leaves the airspace
+    map.data.addListener('mouseout', function() {
+	infoWindow.close();
+    });
     
     // google maps event processing
     new LongClick(map, 2000);                   // long click processing
@@ -65,7 +78,7 @@ function initIt()
     google.maps.event.addListener(map, 'longpress',  function(event) { newclick(event); });
     
     setInterval(loadRunStatus, 120*1000);        // Update every other minute
-}
+};
 
 function getUrl() {
     var newUrl = location.href;
@@ -92,29 +105,73 @@ function baseDataAndMenu(URL, data)
     baseData(URL, data)
     processPlotParams();
 
-    // add airspace
-    for (idx in airspaceFiles)
+    // add airspaces
+    for (const obj of airspaces)
     {
-	addKmlLayer(airspaceFiles[idx]);
-    }
-}
-
-// Add the KmlLayer
-function addKmlLayer(fname)
-{
-    var layer = new google.maps.KmlLayer({
-	url: airspaceBaseUrl + fname,
-	preserveViewport: true,
-	map: map});
-
-    google.maps.event.addListener(layer, "status_changed", function() {
-	var kmlstatus = layer.getStatus();
-	if (kmlstatus != 'OK') {
-	    console.log("KmlLayer " + layer.getUrl() + " " + kmlstatus);
-	} else {
-	    airspace.push(layer);
+	for (const file of obj.files)
+	{
+	    // get new copy of geoJSON
+	    map.data.loadGeoJson(baseUrl + file + "?v=" + new Date().getTime());
 	}
+    }
+    // style the data
+    map.data.setStyle(function(feature) {
+	var icaoClass = feature.getProperty('icaoClass');
+	var type = feature.getProperty('type');
+	var fillColor = 'red';
+	var fillOpacity = 0.5;
+	var strokeColor = 'black';
+	switch (icaoClass) {
+	    case 1:
+		// Class B
+		strokeColor = 'red';
+		fillOpacity = 0;
+		break;
+	    case 2:
+		// Class C
+		strokeColor = 'blue';
+		fillOpacity = 0;
+		break;
+	    case 3:
+		// Class D
+		strokeColor = 'yellow';
+		fillOpacity = 0;
+		break;
+	    case 8:
+		switch (type) {
+		    case 1:
+		    case 3:
+		    case 19:
+			// Restricted
+			strokeColor = 'black';
+			fillOpacity = 0;
+			break;
+		    default:
+			var name = feature.getProperty('name');
+			console.log(name, icaoClass, type);
+			break;
+		}
+		break;
+	    default:
+		var name = feature.getProperty('name');
+		console.log(name, icaoClass, type);
+		break;
+	}
+	return {
+	    fillColor: fillColor,
+	    fillOpacity: fillOpacity,
+	    strokeColor: strokeColor,
+	    strokeOpacity: 1.0,
+	    strokeWeight: 2,
+	    visible: true
+	};
     });
+
+    // Set mouseover event for airspace
+    //map.data.addListener('mouseover', (event) => {
+	//document.getElementById('info-box').textContent =
+	    //event.feature.getProperty('name');
+    //});
 }
 
 // Load/Update runStatus
@@ -146,11 +203,16 @@ function getURL(URL, routine) {
 function baseData(URL, data)
 {
     plotData = data.regions;
-    airspaceFiles = data.airspace.files;
-    airspaceBaseUrl = data.airspace.baseUrl;
     initialRegion = data.initialRegion;
-    if (airspaceBaseUrl == "") airspaceBaseUrl = location.href;
-    airspaceBaseUrl = airspaceBaseUrl.replace(/[^/\\]+\.\w+$/,"");
+    airspaces = data.airspaces;
+    // Update base URL for each set of airspace files
+    for (idx = 0; idx < airspaces.length; idx++)
+    {
+	baseUrl = airspaces[idx].baseUrl;
+	if (baseUrl == "") baseUrl = location.href;
+	baseUrl = baseUrl.replace(/[^/\\]+\.\w+$/,"");
+	airspaces[idx].baseUrl = baseUrl;
+    }
     // create models for each region
     for (idx = 0; idx < plotData.length; idx++)
     {
@@ -723,7 +785,7 @@ function clearImage() {
     overlay.clear();
 }
 
-// Configure imgage sizes
+// Configure image sizes
 function setSize() {
     // window size
     var w = window.innerWidth
@@ -782,8 +844,6 @@ function newMap()
     };
     
     map = new google.maps.Map(document.getElementById("plotImg"), mapOptions);
-
-    return( map );
 }
 
 /*
